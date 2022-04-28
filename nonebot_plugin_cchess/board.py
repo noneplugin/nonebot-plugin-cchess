@@ -95,3 +95,136 @@ class Board:
                     )
                 ):
                     yield Pos(row, col)
+
+    def legal_to_pos(self, from_pos: Pos) -> Iterator[Pos]:
+        """获取某个位置的棋子所有可能走的位置"""
+        piece = self._board[from_pos.x][from_pos.y]
+        if not piece:
+            return
+
+        self_pos = list(self.get_piece_pos(sameside=True))
+        oppo_pos = list(self.get_piece_pos(sameside=False))
+        total_pos = self_pos + oppo_pos
+
+        piece_type = piece.piece_type
+        if piece_type == PieceType.KING:
+            for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+                to_pos = Pos(from_pos.x + dx, from_pos.y + dy)
+                if (
+                    (0 <= to_pos.x <= 2 or 7 <= to_pos.x <= 9)
+                    and 3 <= to_pos.y <= 5
+                    and to_pos not in self_pos
+                ):
+                    yield to_pos
+        elif piece_type == PieceType.ADVISOR:
+            for dx, dy in ((1, 1), (-1, -1), (1, -1), (-1, 1)):
+                to_pos = Pos(from_pos.x + dx, from_pos.y + dy)
+                if (
+                    (0 <= to_pos.x <= 2 or 7 <= to_pos.x <= 9)
+                    and 3 <= to_pos.y <= 5
+                    and to_pos not in self_pos
+                ):
+                    yield to_pos
+        elif piece_type == PieceType.BISHOP:
+            for dx, dy in ((2, 2), (-2, -2), (2, -2), (-2, 2)):
+                to_pos = Pos(from_pos.x + dx, from_pos.y + dy)
+                mid_pos = Pos(
+                    (from_pos.x + to_pos.x) // 2, (from_pos.y + to_pos.y) // 2
+                )
+                if (
+                    to_pos.valid()
+                    and mid_pos.x not in [4, 5]
+                    and to_pos not in self_pos
+                    and mid_pos not in total_pos
+                ):
+                    yield to_pos
+        elif piece_type == PieceType.KNIGHT:
+            for dx, dy in (
+                (2, 1),
+                (-2, -1),
+                (-2, 1),
+                (2, -1),
+                (1, 2),
+                (-1, -2),
+                (-1, 2),
+                (1, -2),
+            ):
+                to_pos = Pos(from_pos.x + dx, from_pos.y + dy)
+                if abs(dx) == 1:
+                    mid_pos = Pos(from_pos.x, (from_pos.y + to_pos.y) // 2)
+                else:
+                    mid_pos = Pos((from_pos.x + to_pos.x) // 2, from_pos.y)
+                if (
+                    to_pos.valid()
+                    and to_pos not in self_pos
+                    and mid_pos not in total_pos
+                ):
+                    yield to_pos
+        elif piece_type == PieceType.PAWN:
+            if self.moveside:
+                if from_pos.x >= 5:
+                    moves = ((1, 0), (0, 1), (0, -1))
+                else:
+                    moves = ((1, 0),)
+            else:
+                if from_pos.x <= 4:
+                    moves = ((-1, 0), (0, 1), (0, -1))
+                else:
+                    moves = ((-1, 0),)
+            for dx, dy in moves:
+                to_pos = Pos(from_pos.x + dx, from_pos.y + dy)
+                if to_pos.valid() and to_pos not in self_pos:
+                    yield to_pos
+        elif piece_type == PieceType.ROOK:
+            start_x = 0
+            end_x = 9
+            start_y = 0
+            end_y = 8
+            for pos in total_pos:
+                if pos.x == from_pos.x:
+                    if start_y < pos.y < from_pos.y:
+                        start_y = pos.y
+                    if from_pos.y < pos.y < end_y:
+                        end_y = pos.y
+                if pos.y == from_pos.y:
+                    if start_x < pos.x < from_pos.x:
+                        start_x = pos.x
+                    if from_pos.x < pos.x < end_x:
+                        end_x = pos.x
+            for x in range(start_x, end_x + 1):
+                to_pos = Pos(x, from_pos.y)
+                if to_pos != from_pos and to_pos not in self_pos:
+                    yield to_pos
+            for y in range(start_y, end_y + 1):
+                to_pos = Pos(from_pos.x, y)
+                if to_pos != from_pos and to_pos not in self_pos:
+                    yield to_pos
+        elif piece_type == PieceType.CANNON:
+            above_pos = [p for p in total_pos if p.y == from_pos.y and p.x > from_pos.x]
+            below_pos = [p for p in total_pos if p.y == from_pos.y and p.x < from_pos.x]
+            left_pos = [p for p in total_pos if p.x == from_pos.x and p.y < from_pos.y]
+            right_pos = [p for p in total_pos if p.x == from_pos.x and p.y > from_pos.y]
+            above_pos.sort(key=lambda p: p.x)
+            below_pos.sort(key=lambda p: p.x, reverse=True)
+            left_pos.sort(key=lambda p: p.x, reverse=True)
+            right_pos.sort(key=lambda p: p.x)
+            start_x = below_pos[0].x if below_pos else 0
+            end_x = above_pos[0].x if above_pos else 9
+            start_y = left_pos[0].y if left_pos else 0
+            end_y = right_pos[0].y if right_pos else 8
+            for x in range(start_x, end_x + 1):
+                to_pos = Pos(x, from_pos.y)
+                if to_pos != from_pos and to_pos not in total_pos:
+                    yield to_pos
+            for y in range(start_y, end_y + 1):
+                to_pos = Pos(from_pos.x, y)
+                if to_pos != from_pos and to_pos not in total_pos:
+                    yield to_pos
+            if len(above_pos) > 1 and above_pos[1] not in self_pos:
+                yield above_pos[1]
+            if len(below_pos) > 1 and below_pos[1] not in self_pos:
+                yield below_pos[1]
+            if len(left_pos) > 1 and left_pos[1] not in self_pos:
+                yield left_pos[1]
+            if len(right_pos) > 1 and right_pos[1] not in self_pos:
+                yield right_pos[1]

@@ -49,6 +49,9 @@ class Pos:
     def __str__(self) -> str:
         return self.ucci()
 
+    def __hash__(self) -> int:
+        return hash(self.ucci())
+
     def ucci(self) -> str:
         """转为 UCCI 格式的坐标"""
         return f"{chr(ord('a') + self.y)}{self.x}"
