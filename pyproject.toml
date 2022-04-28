@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "nonebot_plugin-cchess"
+version = "0.1.0"
+description = "Nonebot2 象棋插件"
+authors = ["meetwq <meetwq@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/noneplugin/nonebot-plugin-cchess"
+repository = "https://github.com/noneplugin/nonebot-plugin-cchess"
+
+[tool.poetry.dependencies]
+python = "^3.7.3"
+nonebot2 = "^2.0.0-beta.1"
+nonebot-adapter-onebot = "^2.0.0-beta.1"
+
+[tool.poetry.dev-dependencies]
+nb-cli = "^0.6.0"
+black = "^22.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
