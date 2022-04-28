@@ -19,11 +19,6 @@ class PieceType(Enum):
     """兵"""
 
 
-class PieceColor(Enum):
-    RED = 0
-    BLACK = 1
-
-
 piece_data: Dict[str, Tuple[Tuple[str, str], Tuple[str, str]]] = {
     "k": (("帥", "將"), ("\U0001FA00", "\U0001FA07")),
     "a": (("仕", "士"), ("\U0001FA01", "\U0001FA08")),
@@ -37,18 +32,18 @@ piece_data: Dict[str, Tuple[Tuple[str, str], Tuple[str, str]]] = {
 
 class Piece:
     def __init__(self, symbol: str):
-        self.symbol = symbol
+        self.symbol: str = symbol
         """棋子字母表示，大写表示红方，小写表示黑方"""
         s = symbol.lower()
         t = 1 if s == symbol else 0
-        self.name = piece_data[s][0][t]
+        self.name: str = piece_data[s][0][t]
         """棋子中文名称"""
-        self.unicode_symbol = piece_data[s][1][t]
+        self.unicode_symbol: str = piece_data[s][1][t]
         """棋子 Unicode 符号"""
-        self.piece_type = PieceType(s)
+        self.piece_type: PieceType = PieceType(s)
         """棋子类型"""
-        self.color = PieceColor(t)
-        """棋子颜色"""
+        self.color: bool = bool(t == 0)
+        """棋子颜色，`True`为红色，`False`为黑色"""
 
     def __str__(self) -> str:
         return self.symbol

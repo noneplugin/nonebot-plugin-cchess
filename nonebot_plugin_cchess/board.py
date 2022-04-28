@@ -1,8 +1,8 @@
 import re
-from typing import List, Optional
+from typing import List, Optional, Iterator
 
-from .move import Move, MoveSide
-from .piece import Piece
+from .move import Move, Pos
+from .piece import Piece, PieceType
 
 INIT_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
 
@@ -12,11 +12,11 @@ class Board:
         self._board: List[List[Optional[Piece]]] = [
             [None for j in range(9)] for i in range(10)
         ]
-        self.moveside = MoveSide.RED
-        """当前行动方"""
-        self.halfmove = 0
+        self.moveside: bool = True
+        """当前行动方，`True`为红方，`False`为黑方"""
+        self.halfmove: int = 0
         """双方没有吃子的走棋步数(半回合数)"""
-        self.fullmove = 1
+        self.fullmove: int = 1
         """当前的回合数"""
         self.from_fen(start_fen)
 
@@ -41,13 +41,14 @@ class Board:
                 else:
                     raise ValueError("Illegal character in fen string!")
 
-        self.moveside = MoveSide.BLACK if moveside == "b" else MoveSide.RED
+        self.moveside = not (moveside == "b")
         self.halfmove = int(halfmove)
         self.fullmove = int(fullmove)
 
     def fen(self) -> str:
         """返回当前局面的FEN字符串"""
-        return f"{self.board_fen()} {self.moveside.value} - - {self.halfmove} {self.fullmove}"
+        moveside = "w" if self.moveside else "b"
+        return f"{self.board_fen()} {moveside} - - {self.halfmove} {self.fullmove}"
 
     def board_fen(self) -> str:
         """返回当前棋盘布局的FEN字符串"""
@@ -68,3 +69,29 @@ class Board:
             line_fens.append(line_fen)
         return "/".join(line_fens[::-1])
 
+    def get_piece_at(self, pos: Pos, sameside: bool = True) -> Optional[Piece]:
+        """获取指定位置的棋子"""
+        piece = self._board[pos.x][pos.y]
+        if piece and (
+            (self.moveside == piece.color)
+            if sameside
+            else (self.moveside != piece.color)
+        ):
+            return piece
+
+    def get_piece_pos(
+        self, piece_type: Optional[PieceType] = None, sameside: bool = True
+    ) -> Iterator[Pos]:
+        """获取指定类型的棋子，`piece_type`为空表示所有类型"""
+        for row, line in enumerate(self._board):
+            for col, piece in enumerate(line):
+                if (
+                    piece
+                    and (piece_type is None or piece.piece_type == piece_type)
+                    and (
+                        (self.moveside == piece.color)
+                        if sameside
+                        else (self.moveside != piece.color)
+                    )
+                ):
+                    yield Pos(row, col)

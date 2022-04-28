@@ -1,8 +1,7 @@
-from enum import Enum
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional, TYPE_CHECKING
 
-from .piece import PieceType, PieceColor
+from .piece import PieceType
 
 if TYPE_CHECKING:
     from .board import Board
@@ -37,23 +36,6 @@ COUNT345_DICT: Dict[int, Tuple[str, ...]] = {
 COUNT345_CHI_DICT = {
     name: num for num, names in COUNT345_DICT.items() for name in names
 }
-
-
-class MoveSide(Enum):
-    RED = "w"
-    BLACK = "b"
-
-
-def same_side_color(side: MoveSide, color: PieceColor) -> bool:
-    return (side == MoveSide.RED and color == PieceColor.RED) or (
-        side == MoveSide.BLACK and color == PieceColor.BLACK
-    )
-
-
-class Direction(Enum):
-    ABOVE = 1
-    BELOW = -1
-    FLAT = 0
 
 
 @dataclass
@@ -143,44 +125,22 @@ class Move:
     def chinese(self, board: "Board") -> str:
         """转为中文格式的移动"""
 
-        def count_piece(pos: Pos, piece_type: PieceType) -> Tuple[int, int]:
-            """统计某个位置的棋子在其纵线上的同种棋子的个数及第几个"""
-            count = 1
-            total_count = 0
-            if board.moveside == MoveSide.RED:
-                start_x = pos.x + 1
-                end_x = 10
-            else:
-                start_x = 0
-                end_x = pos.x
-            for x, line in enumerate(board._board):
-                piece = line[pos.y]
-                if (
-                    piece
-                    and piece.piece_type == piece_type
-                    and same_side_color(board.moveside, piece.color)
-                ):
-                    total_count += 1
-                    if start_x <= x < end_x:
-                        count += 1
-            return total_count, count
-
-        piece = board._board[self.from_pos.x][self.from_pos.y]
+        piece = board.get_piece_at(self.from_pos)
         if not piece:
             raise ValueError(f"不合法的移动，起始位置没有棋子")
         piece_type = piece.piece_type
 
         diff_x = self.from_pos.x - self.to_pos.x
-        if board.moveside == MoveSide.RED:
+        if board.moveside:
             diff_x = -diff_x
         if diff_x == 0:
-            direc = Direction.FLAT
+            direc = 0
         elif diff_x > 0:
-            direc = Direction.ABOVE
+            direc = 1
         else:
-            direc = Direction.BELOW
+            direc = -1
 
-        if direc != Direction.FLAT and piece_type in (
+        if direc != 0 and piece_type in (
             PieceType.KING,
             PieceType.CANNON,
             PieceType.ROOK,
@@ -189,17 +149,31 @@ class Move:
             move_num = abs(diff_x)
         else:
             move_num = self.to_pos.y
-            if board.moveside == MoveSide.RED:
+            if board.moveside:
                 move_num = 8 - move_num
             move_num += 1
 
-        num_dict = NUM_CHI if board.moveside == MoveSide.RED else NUM_DIGIT
+        num_dict = NUM_CHI if board.moveside else NUM_DIGIT
         col_num = self.from_pos.y
-        if board.moveside == MoveSide.RED:
+        if board.moveside:
             col_num = 8 - col_num
         col_str = num_dict[col_num]
 
-        total_count, count = count_piece(self.from_pos, piece_type)
+        """统计棋子在其纵线上的同种棋子的个数及第几个"""
+        count = 1
+        total_count = 0
+        if board.moveside:
+            start_x = self.from_pos.x + 1
+            end_x = 10
+        else:
+            start_x = 0
+            end_x = self.from_pos.x
+        for pos in board.get_piece_pos(piece_type):
+            if pos.y == self.from_pos.y:
+                total_count += 1
+                if start_x <= pos.x < end_x:
+                    count += 1
+
         if total_count == 1:
             name = piece.name + col_str
         elif total_count == 2:
@@ -209,7 +183,7 @@ class Move:
         else:
             name = COUNT345_DICT[count][0] + col_str
 
-        return name + DIREC_DICT[direc.value][0] + num_dict[move_num - 1]
+        return name + DIREC_DICT[direc][0] + num_dict[move_num - 1]
 
     @classmethod
     def from_chinese(cls, board: "Board", move_str: str) -> "Move":
@@ -237,8 +211,8 @@ class Move:
         def valid_direc(s: str) -> bool:
             return s in DIREC_CHI_DICT
 
-        def parse_direc(s: str) -> Direction:
-            return Direction(DIREC_CHI_DICT[s])
+        def parse_direc(s: str) -> int:
+            return DIREC_CHI_DICT[s]
 
         def valid_count2(s: str) -> bool:
             return s in COUNT2_CHI_DICT
@@ -252,27 +226,18 @@ class Move:
         def parse_count345(s: str) -> int:
             return COUNT345_CHI_DICT[s]
 
-        def find_piece(col: int, piece_type: PieceType, num: int = 1) -> Optional[Pos]:
+        def find_piece(
+            col: int, piece_type: PieceType, count: int = 1, min_count: int = 1
+        ) -> Optional[Pos]:
             """找到某一纵线上第n个某种类型的棋子"""
             col -= 1
-            pieces = board._board.copy()
-            if board.moveside == MoveSide.RED:
-                pieces = [line[::-1] for line in pieces[::-1]]
-            count = 0
-            for row, line in enumerate(pieces):
-                piece = line[col]
-                if (
-                    piece
-                    and piece.piece_type == piece_type
-                    and same_side_color(board.moveside, piece.color)
-                ):
-                    count += 1
-                    if num == count:
-                        return (
-                            Pos(9 - row, 8 - col)
-                            if board.moveside == MoveSide.RED
-                            else Pos(row, col)
-                        )
+            if board.moveside:
+                col = 8 - col
+            col_pos = [pos for pos in board.get_piece_pos(piece_type) if pos.y == col]
+            if len(col_pos) < min_count:
+                return
+            col_pos.sort(key=lambda p: p.x, reverse=board.moveside)
+            return col_pos[count - 1]
 
         if (
             valid_piece(move_str[0])
@@ -318,7 +283,7 @@ class Move:
 
             from_pos = None
             for col_num in range(1, 10):
-                from_pos = find_piece(col_num, piece_type, num)
+                from_pos = find_piece(col_num, piece_type, num, 2)
                 if from_pos:
                     break
 
@@ -339,7 +304,7 @@ class Move:
             move_num = parse_num(move_str[3])
             piece_type = PieceType.PAWN
 
-            from_pos = find_piece(col_num, piece_type, num)
+            from_pos = find_piece(col_num, piece_type, num, 3)
 
         else:
             raise ValueError(f"记谱字符串不合法：{move_str}")
@@ -347,33 +312,32 @@ class Move:
         if not from_pos:
             raise ValueError(f"记谱字符串不合法：{move_str}，找不到对应的棋子")
 
-        if direc == Direction.FLAT:
+        if direc == 0:
             to_x = from_pos.x
             move_num -= 1
-            to_y = 8 - move_num if board.moveside == MoveSide.RED else move_num
+            to_y = 8 - move_num if board.moveside else move_num
         else:
-            flag = direc.value
-            if board.moveside == MoveSide.BLACK:
-                flag = -flag
+            if not board.moveside:
+                direc = -direc
             if piece_type in (
                 PieceType.KING,
                 PieceType.CANNON,
                 PieceType.ROOK,
                 PieceType.PAWN,
             ):
-                to_x = from_pos.x + move_num * flag
+                to_x = from_pos.x + move_num * direc
                 to_y = from_pos.y
             else:
                 move_num -= 1
-                to_y = 8 - move_num if board.moveside == MoveSide.RED else move_num
+                to_y = 8 - move_num if board.moveside else move_num
                 diff_y = abs(from_pos.y - to_y)
                 if piece_type == PieceType.BISHOP:
-                    to_x = from_pos.x + 2 * flag
+                    to_x = from_pos.x + 2 * direc
                 elif piece_type == PieceType.ADVISOR:
-                    to_x = from_pos.x + 1 * flag
+                    to_x = from_pos.x + 1 * direc
                 else:
                     diff_x = 2 if diff_y == 1 else 1
-                    to_x = from_pos.x + diff_x * flag
+                    to_x = from_pos.x + diff_x * direc
         to_pos = Pos(to_x, to_y)
 
         if not (from_pos.valid() and to_pos.valid()):
