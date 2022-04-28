@@ -1,10 +1,43 @@
 import re
+import copy
+from enum import Enum
+from dataclasses import dataclass
 from typing import List, Optional, Iterator
 
 from .move import Move, Pos
 from .piece import Piece, PieceType
 
 INIT_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
+
+
+class MoveResult(Enum):
+    RED_WIN = 0
+    """红胜"""
+    BLACK_WIN = 1
+    """黑胜"""
+    DRAW = 2
+    """平局"""
+    ILLEAGAL = 3
+    """移动不合法"""
+    CHECKED = 4
+    """移动会导致被将军"""
+
+    @classmethod
+    def from_bool(cls, moveside: bool) -> "MoveResult":
+        """当前行动方判负"""
+        return MoveResult.BLACK_WIN if moveside else MoveResult.RED_WIN
+
+
+@dataclass
+class History:
+    fen: str
+    """当前局面的FEN字符串"""
+    start_fen: str
+    """上一个不吃子局面FEN字符串"""
+    last_move: str
+    """上一次的移动，ucci形式"""
+    moves: List[str]
+    """从上一个不吃子局面开始的移动，ucci形式"""
 
 
 class Board:
@@ -18,7 +51,16 @@ class Board:
         """双方没有吃子的走棋步数(半回合数)"""
         self.fullmove: int = 1
         """当前的回合数"""
+        self.last_move: Move = Move.null()
+        """上一次的移动"""
+        self.start_fen: str = start_fen
+        """上一个不吃子局面FEN字符串"""
+        self.moves: List[Move] = []
+        """从上一个不吃子局面开始的移动"""
         self.from_fen(start_fen)
+        self.history: List[History] = []
+        """历史记录"""
+        self.save_history()
 
     def __str__(self) -> str:
         return self.fen()
@@ -96,14 +138,22 @@ class Board:
                 ):
                     yield Pos(row, col)
 
+    def get_piece(self, pos: Pos) -> Optional[Piece]:
+        """获取棋子"""
+        return self._board[pos.x][pos.y]
+
+    def set_piece(self, pos: Pos, piece: Optional[Piece]):
+        """设置棋子"""
+        self._board[pos.x][pos.y] = piece
+
     def legal_to_pos(self, from_pos: Pos) -> Iterator[Pos]:
         """获取某个位置的棋子所有可能走的位置"""
-        piece = self._board[from_pos.x][from_pos.y]
+        piece = self.get_piece(from_pos)
         if not piece:
             return
-
-        self_pos = list(self.get_piece_pos(sameside=True))
-        oppo_pos = list(self.get_piece_pos(sameside=False))
+        sameside = piece.color == self.moveside
+        self_pos = list(self.get_piece_pos(sameside=sameside))
+        oppo_pos = list(self.get_piece_pos(sameside=not sameside))
         total_pos = self_pos + oppo_pos
 
         piece_type = piece.piece_type
@@ -228,3 +278,123 @@ class Board:
                 yield left_pos[1]
             if len(right_pos) > 1 and right_pos[1] not in self_pos:
                 yield right_pos[1]
+
+    def is_legal_move(self, move: Move) -> bool:
+        """判断走法是否合法"""
+        if not self.get_piece_at(move.from_pos):
+            return False
+        return move.to_pos in self.legal_to_pos(move.from_pos)
+
+    def is_checked_move(self, move: Move) -> bool:
+        """判断走法是否会造成被将军或主帅面对面"""
+        board = self.try_move(move)
+        if board.is_king_face_to_face() or board.is_checked():
+            return True
+        return False
+
+    def legal_moves(self) -> Iterator[Move]:
+        """当前行动方所有可能走的走法"""
+        for from_pos in self.get_piece_pos():
+            for to_pos in self.legal_to_pos(from_pos):
+                yield Move(from_pos, to_pos)
+
+    def is_dead(self) -> bool:
+        """判断当前行动方的将是否被吃掉"""
+        return not list(self.get_piece_pos(PieceType.KING))
+
+    def is_king_face_to_face(self) -> bool:
+        """判断将帅是否面对面"""
+        pos1 = next(self.get_piece_pos(PieceType.KING))
+        pos2 = next(self.get_piece_pos(PieceType.KING, sameside=False))
+        start_x = min(pos1.x, pos2.x)
+        end_x = max(pos1.x, pos2.x)
+        return pos1.y == pos2.y and all(
+            [self._board[x][pos1.y] is None for x in range(start_x + 1, end_x)]
+        )
+
+    def is_checked(self) -> bool:
+        """判断当前行动方是否被将军"""
+        pos = next(self.get_piece_pos(PieceType.KING))
+        for from_pos in self.get_piece_pos(sameside=False):
+            if pos in self.legal_to_pos(from_pos):
+                return True
+        return False
+
+    def is_checked_dead(self) -> bool:
+        """判断当前行动方是否被将死"""
+        for move in self.legal_moves():
+            board = self.try_move(move)
+            if not board.is_king_face_to_face() and not board.is_checked():
+                return False
+        return True
+
+    def position(self) -> str:
+        """获取 ucci position 指令字符串，用于设置棋盘局面"""
+        res = f"position fen {self.fen()}"
+        if self.moves:
+            moves = [str(m) for m in self.moves]
+            res += f" moves {''.join(moves)}"
+        return res
+
+    def save_history(self):
+        """保存历史局面"""
+        history = History(
+            self.fen(),
+            self.start_fen,
+            str(self.last_move),
+            [str(m) for m in self.moves],
+        )
+        self.history.append(history)
+
+    def load_history(self, history: History):
+        """从历史局面恢复"""
+        self.from_fen(history.fen)
+        self.start_fen = history.start_fen
+        self.last_move = Move.from_ucci(history.last_move)
+        self.moves = [Move.from_ucci(m) for m in history.moves]
+
+    def make_move(self, move: Move):
+        """进行移动"""
+        change = self.get_piece_at(move.to_pos, sameside=False)  # 发生吃子
+        self.set_piece(move.to_pos, self.get_piece(move.from_pos))
+        self.set_piece(move.from_pos, None)
+        self.last_move = move
+        if not self.moveside:
+            self.fullmove += 1
+        self.moveside = not self.moveside
+        if change:
+            self.moves.clear()
+            self.halfmove = 0
+            self.start_fen = self.fen()
+        else:
+            self.moves.append(move)
+            self.halfmove += 1
+        self.save_history()
+
+    def try_move(self, move: Move) -> "Board":
+        """尝试移动"""
+        board = copy.deepcopy(self)
+        board.set_piece(move.to_pos, board.get_piece(move.from_pos))
+        board.set_piece(move.from_pos, None)
+        return board
+
+    def push(self, move: Move) -> Optional[MoveResult]:
+        """移动并返回结果"""
+        if not self.is_legal_move(move):
+            return MoveResult.ILLEAGAL
+        if self.is_checked_move(move):
+            return MoveResult.CHECKED
+        self.make_move(move)
+        if self.is_dead():
+            return MoveResult.from_bool(self.moveside)
+        if self.is_king_face_to_face():
+            return MoveResult.from_bool(not self.moveside)
+        if self.is_checked_dead():
+            return MoveResult.from_bool(self.moveside)
+        if self.halfmove >= 60:  # 未吃子半回合数超过 60 判和棋
+            return MoveResult.DRAW
+
+    def pop(self):
+        """撤销上一次移动"""
+        self.history.pop()
+        self.load_history(self.history[-1])
