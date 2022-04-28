@@ -1,11 +1,13 @@
 import re
 import copy
 from enum import Enum
+from io import BytesIO
 from dataclasses import dataclass
 from typing import List, Optional, Iterator
 
 from .move import Move, Pos
 from .piece import Piece, PieceType
+from .drawer import draw_board
 
 INIT_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
 
@@ -398,3 +400,6 @@ class Board:
         """撤销上一次移动"""
         self.history.pop()
         self.load_history(self.history[-1])
+
+    def draw(self) -> BytesIO:
+        return draw_board(self)
