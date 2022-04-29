@@ -43,3 +43,19 @@ class Game(Board):
     @property
     def player_next(self) -> Optional[Player]:
         return self.player_red if self.moveside else self.player_black
+
+    @property
+    def player_last(self) -> Optional[Player]:
+        return self.player_black if self.moveside else self.player_red
+
+    @property
+    def is_battle(self) -> bool:
+        return not isinstance(self.player_red, AiPlayer) and not isinstance(
+            self.player_black, AiPlayer
+        )
+
+    def close_engine(self):
+        if isinstance(self.player_red, AiPlayer):
+            self.player_red.engine.close()
+        if isinstance(self.player_black, AiPlayer):
+            self.player_black.engine.close()
