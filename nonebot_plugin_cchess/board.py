@@ -332,10 +332,10 @@ class Board:
 
     def position(self) -> str:
         """获取 ucci position 指令字符串，用于设置棋盘局面"""
-        res = f"position fen {self.fen()}"
+        res = f"position fen {self.start_fen}"
         if self.moves:
             moves = [str(m) for m in self.moves]
-            res += f" moves {''.join(moves)}"
+            res += f" moves {' '.join(moves)}"
         return res
 
     def save_history(self):
