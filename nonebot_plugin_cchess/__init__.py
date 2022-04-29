@@ -212,8 +212,9 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
                 if options.black:
                     game.player_red = ai_player
                     move = await ai_player.get_move(game.position())
+                    move_chi = move.chinese(game)
                     game.push(move)
-                    msg += f"\n{ai_player} 下出 {move.chinese(game)}"
+                    msg += f"\n{ai_player} 下出 {move_chi}"
                 else:
                     game.player_black = ai_player
             except EngineError:
@@ -274,6 +275,11 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             except ValueError:
                 await matcher.finish("请发送正确的走法，如 “炮二平五” 或 “h2e2”")
 
+    try:
+        move_str = move.chinese(game)
+    except ValueError:
+        await matcher.finish("不正确的走法")
+
     result = game.push(move)
     if result == MoveResult.ILLEAGAL:
         await matcher.finish("不正确的走法")
@@ -287,9 +293,9 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             game.player_red = player
         elif not game.player_black:
             game.player_black = player
-        msg = f"{player} 加入了游戏并下出 {move.chinese(game)}"
+        msg = f"{player} 加入了游戏并下出 {move_str}"
     else:
-        msg = f"{player} 下出 {move.chinese(game)}"
+        msg = f"{player} 下出 {move_str}"
 
     if result == MoveResult.RED_WIN:
         games.pop(cid)
@@ -312,15 +318,19 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         if game.player_next and game.is_battle:
             msg += f"，下一手轮到 {game.player_next}"
     message.append(msg)
-    message.append(MS.image(game.draw()))
 
-    if not game.is_battle:
+    if game.is_battle:
+        message.append(MS.image(game.draw()))
+    else:
+        message.append(MS.image(game.draw(False)))
+
         ai_player = game.player_next
         assert isinstance(ai_player, AiPlayer)
         move = await ai_player.get_move(game.position())
+        move_chi = move.chinese(game)
         result = game.push(move)
 
-        msg = f"{ai_player} 下出 {move.chinese(game)}"
+        msg = f"{ai_player} 下出 {move_chi}"
         if result == MoveResult.RED_WIN:
             games.pop(cid)
             game.close_engine()

@@ -1,5 +1,4 @@
 import re
-import copy
 from enum import Enum
 from io import BytesIO
 from dataclasses import dataclass
@@ -375,7 +374,7 @@ class Board:
 
     def try_move(self, move: Move) -> "Board":
         """尝试移动"""
-        board = copy.deepcopy(self)
+        board = Board(self.fen())
         board.set_piece(move.to_pos, board.get_piece(move.from_pos))
         board.set_piece(move.from_pos, None)
         return board
@@ -401,5 +400,5 @@ class Board:
         self.history.pop()
         self.load_history(self.history[-1])
 
-    def draw(self) -> BytesIO:
-        return draw_board(self)
+    def draw(self, sameside: bool = True) -> BytesIO:
+        return draw_board(self, sameside)

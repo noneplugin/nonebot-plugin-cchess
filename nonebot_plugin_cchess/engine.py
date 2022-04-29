@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 from typing import List
 
-from move import Move
+from .move import Move
 
 
 class EngineError(Exception):

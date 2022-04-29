@@ -9,9 +9,10 @@ if TYPE_CHECKING:
 img_dir = Path(__file__).parent / "resources" / "images"
 
 
-def draw_board(board: "Board") -> BytesIO:
+def draw_board(board: "Board", sameside: bool = True) -> BytesIO:
     pieces = board._board
-    bg_name = "board_red.png" if board.moveside else "board_black.png"
+    side = board.moveside if sameside else not board.moveside
+    bg_name = "board_red.png" if side else "board_black.png"
     bg = Image.open(img_dir / bg_name)
     mark = Image.open(img_dir / "mark.png")
 
@@ -25,7 +26,7 @@ def draw_board(board: "Board") -> BytesIO:
     for i, line in enumerate(pieces):
         for j, piece in enumerate(line):
 
-            if board.moveside:
+            if side:
                 x = 200 + 300 * j
                 y = 3150 - 300 * i
             else:
