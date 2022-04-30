@@ -213,7 +213,9 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
                     game.player_red = ai_player
                     move = await ai_player.get_move(game.position())
                     move_chi = move.chinese(game)
-                    game.push(move)
+                    result = game.push(move)
+                    if result:
+                        await matcher.finish("象棋引擎返回不正确，请检查设置")
                     msg += f"\n{ai_player} 下出 {move_chi}"
                 else:
                     game.player_black = ai_player
@@ -328,17 +330,20 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             result = game.push(move)
 
             msg = f"{ai_player} 下出 {move_chi}"
-            if result == MoveResult.RED_WIN:
+            if result == MoveResult.ILLEAGAL:
+                game.pop()
+                await matcher.finish("象棋引擎出错，请结束游戏或稍后再试")
+            elif result:
                 games.pop(cid)
                 game.close_engine()
-                msg += "，恭喜你赢了！" if player == game.player_red else "，很遗憾你输了！"
-            elif result == MoveResult.BLACK_WIN:
-                games.pop(cid)
-                game.close_engine()
-                msg += "，恭喜你赢了！" if player == game.player_black else "，很遗憾你输了！"
-            elif result == MoveResult.DRAW:
-                games.pop(cid)
-                msg += f"，本局游戏平局"
+                if result == MoveResult.CHECKED:
+                    msg += "，恭喜你赢了！"
+                elif result == MoveResult.RED_WIN:
+                    msg += "，恭喜你赢了！" if player == game.player_red else "，很遗憾你输了！"
+                elif result == MoveResult.BLACK_WIN:
+                    msg += "，恭喜你赢了！" if player == game.player_black else "，很遗憾你输了！"
+                elif result == MoveResult.DRAW:
+                    msg += f"，本局游戏平局"
             message.append(msg)
             message.append(MS.image(game.draw()))
 

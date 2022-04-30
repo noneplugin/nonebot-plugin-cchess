@@ -257,8 +257,8 @@ class Board:
             right_pos = [p for p in total_pos if p.x == from_pos.x and p.y > from_pos.y]
             above_pos.sort(key=lambda p: p.x)
             below_pos.sort(key=lambda p: p.x, reverse=True)
-            left_pos.sort(key=lambda p: p.x, reverse=True)
-            right_pos.sort(key=lambda p: p.x)
+            left_pos.sort(key=lambda p: p.y, reverse=True)
+            right_pos.sort(key=lambda p: p.y)
             start_x = below_pos[0].x if below_pos else 0
             end_x = above_pos[0].x if above_pos else 9
             start_y = left_pos[0].y if left_pos else 0
