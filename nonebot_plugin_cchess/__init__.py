@@ -136,7 +136,7 @@ shortcut("下棋", rule=game_running)
 
 
 def match_move(msg: str) -> bool:
-    return bool(re.fullmatch(r"^\s*\D[\d一二三四五六七八九][\-\s]?\D[\d一二三四五六七八九]\s*$", msg))
+    return bool(re.fullmatch(r"^\s*\S\S[a-zA-Z平进退上下][\d一二三四五六七八九]\s*$", msg))
 
 
 def get_move_input(state: T_State = State(), msg: str = EventPlainText()) -> bool:
@@ -206,7 +206,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
 
         if not options.battle:
             try:
-                ai_player = AiPlayer(cchess_config.cchess_engine_path)
+                ai_player = AiPlayer(cchess_config.cchess_engine_path, options.level)
                 await ai_player.engine.open()
 
                 if options.black:
@@ -247,7 +247,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         if len(game.history) <= 1 or not game.player_next:
             await matcher.finish("对局尚未开始")
         if game.is_battle:
-            if game.player_last != player:
+            if game.player_last and game.player_last != player:
                 await matcher.finish("上一手棋不是你所下")
             game.pop()
         else:
@@ -257,7 +257,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             game.pop()
         await matcher.finish(f"{player} 进行了悔棋" + MS.image(game.draw()))
 
-    if game.player_last == player:
+    if game.player_last and game.player_last == player:
         await matcher.finish("当前不是你的回合")
 
     move = options.move
@@ -268,12 +268,9 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         move = Move.from_ucci(move)
     except ValueError:
         try:
-            move = Move.from_iccs(move)
+            move = Move.from_chinese(game, move)
         except ValueError:
-            try:
-                move = Move.from_chinese(game, move)
-            except ValueError:
-                await matcher.finish("请发送正确的走法，如 “炮二平五” 或 “h2e2”")
+            await matcher.finish("请发送正确的走法，如 “炮二平五” 或 “h2e2”")
 
     try:
         move_str = move.chinese(game)
@@ -323,26 +320,26 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         message.append(MS.image(game.draw()))
     else:
         message.append(MS.image(game.draw(False)))
+        if not result:
+            ai_player = game.player_next
+            assert isinstance(ai_player, AiPlayer)
+            move = await ai_player.get_move(game.position())
+            move_chi = move.chinese(game)
+            result = game.push(move)
 
-        ai_player = game.player_next
-        assert isinstance(ai_player, AiPlayer)
-        move = await ai_player.get_move(game.position())
-        move_chi = move.chinese(game)
-        result = game.push(move)
-
-        msg = f"{ai_player} 下出 {move_chi}"
-        if result == MoveResult.RED_WIN:
-            games.pop(cid)
-            game.close_engine()
-            msg += "，恭喜你赢了！" if player == game.player_red else "，很遗憾你输了！"
-        elif result == MoveResult.BLACK_WIN:
-            games.pop(cid)
-            game.close_engine()
-            msg += "，恭喜你赢了！" if player == game.player_black else "，很遗憾你输了！"
-        elif result == MoveResult.DRAW:
-            games.pop(cid)
-            msg += f"，本局游戏平局"
-        message.append(msg)
-        message.append(MS.image(game.draw()))
+            msg = f"{ai_player} 下出 {move_chi}"
+            if result == MoveResult.RED_WIN:
+                games.pop(cid)
+                game.close_engine()
+                msg += "，恭喜你赢了！" if player == game.player_red else "，很遗憾你输了！"
+            elif result == MoveResult.BLACK_WIN:
+                games.pop(cid)
+                game.close_engine()
+                msg += "，恭喜你赢了！" if player == game.player_black else "，很遗憾你输了！"
+            elif result == MoveResult.DRAW:
+                games.pop(cid)
+                msg += f"，本局游戏平局"
+            message.append(msg)
+            message.append(MS.image(game.draw()))
 
     await matcher.finish(message)
