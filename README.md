@@ -30,7 +30,7 @@ cchess_engine_path=/path/to/your/engine
 
  - [Fairy-Stockfish](https://github.com/ianfab/Fairy-Stockfish/releases)
 
-注意，Fairy-Stockfish 支持多种游戏，需要选择支持 `Xiangqi` 的发行版，即不能用带有 `largeboard` 的版本
+注意，Fairy-Stockfish 支持多种游戏，需要选择支持 `Xiangqi` 的发行版，即需要选带有 `largeboard` 的版本
 
 
 ### 使用
