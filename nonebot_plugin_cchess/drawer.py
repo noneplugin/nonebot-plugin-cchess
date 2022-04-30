@@ -48,5 +48,4 @@ def draw_board(board: "Board", sameside: bool = True) -> BytesIO:
     output = BytesIO()
     bg = bg.convert("RGB")
     bg.save(output, format="jpeg")
-    bg.save("test.png")
     return output
