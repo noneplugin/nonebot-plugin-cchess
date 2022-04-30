@@ -1,4 +1,4 @@
-## nonebot-plugin-chess
+## nonebot-plugin-cchess
 
 适用于 [Nonebot2](https://github.com/nonebot/nonebot2) 的象棋插件。
 
@@ -8,13 +8,13 @@
 - 使用 nb-cli
 
 ```
-nb plugin install nonebot_plugin_chess
+nb plugin install nonebot_plugin_cchess
 ```
 
 - 使用 pip
 
 ```
-pip install nonebot_plugin_chess
+pip install nonebot_plugin_cchess
 ```
 
 
