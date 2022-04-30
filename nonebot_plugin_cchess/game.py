@@ -25,9 +25,9 @@ class AiPlayer(Player):
         self.id = uuid.uuid4().hex
         self.name = f"AI lv.{level}"
         self.engine = UCCIEngine(engine_path)
-        time_list = [600, 800, 1000, 1200, 1500, 2000, 3000, 5000]
+        time_list = [100, 400, 700, 1000, 1500, 2000, 3000, 5000]
         self.time = time_list[level - 1]
-        depth_list = [5, 6, 7, 8, 10, 13, 17, 22]
+        depth_list = [5, 5, 5, 5, 8, 12, 17, 25]
         self.depth = depth_list[level - 1]
 
     async def get_move(self, position: str) -> Move:
