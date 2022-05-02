@@ -262,7 +262,9 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             game.pop()
         await matcher.finish(f"{player} 进行了悔棋" + MS.image(game.draw()))
 
-    if game.player_next and game.player_next != player:
+    if (game.player_next and game.player_next != player) or (
+        game.player_last and game.player_last == player
+    ):
         await matcher.finish("当前不是你的回合")
 
     move = options.move
