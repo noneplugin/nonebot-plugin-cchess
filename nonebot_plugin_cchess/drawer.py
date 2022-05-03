@@ -46,6 +46,6 @@ def draw_board(board: "Board", sameside: bool = True) -> BytesIO:
             bg.paste(img, (x, y), mask=img)
 
     output = BytesIO()
-    bg = bg.convert("RGB")
-    bg.save(output, format="jpeg")
+    bg = bg.convert("RGBA").resize((775, 975), Image.ANTIALIAS)
+    bg.save(output, format="png")
     return output
