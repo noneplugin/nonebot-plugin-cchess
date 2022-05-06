@@ -131,7 +131,7 @@ shortcut("停止下棋", ["--stop"], aliases={"结束下棋", "停止游戏", "�
 shortcut("查看棋盘", ["--show"], aliases={"查看棋局", "显示棋盘", "显示棋局"}, rule=game_running)
 shortcut("悔棋", ["--repent"], rule=game_running)
 shortcut("下棋", rule=game_running)
-shortcut("重载象棋棋局", ["--reload"], aliases={"重载象棋棋盘", "加载象棋棋局", "加载象棋棋盘"})
+shortcut("重载象棋棋局", ["--reload"], aliases={"重载象棋棋盘", "恢复象棋棋局", "恢复象棋棋盘"})
 
 
 def match_move(msg: str) -> bool:
