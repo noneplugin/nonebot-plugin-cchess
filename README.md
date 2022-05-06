@@ -57,6 +57,7 @@ cchess_engine_path=/path/to/your/engine
  - `-e`, `--stop`, `--end`: 停止下棋
  - `-v`, `--show`, `--view`: 显示棋盘
  - `--repent`: 悔棋
+ - `--reload`: 重新加载已停止的游戏
  - `--battle`: 对战模式，默认为人机模式
  - `--black`: 执黑，即后手
  - `-l <LEVEL>`, `--level <LEVEL>`: 人机等级，可选 1~8，默认为 4
