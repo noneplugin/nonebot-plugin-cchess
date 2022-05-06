@@ -33,12 +33,10 @@ class MoveResult(Enum):
 class History:
     fen: str
     """当前局面的FEN字符串"""
-    start_fen: str
+    latest_fen: str
     """上一个不吃子局面FEN字符串"""
-    last_move: str
-    """上一次的移动，ucci形式"""
-    moves: List[str]
-    """从上一个不吃子局面开始的移动，ucci形式"""
+    latest_moves: List[Move]
+    """从上一个不吃子局面开始的移动"""
 
 
 class Board:
@@ -52,11 +50,13 @@ class Board:
         """双方没有吃子的走棋步数(半回合数)"""
         self.fullmove: int = 1
         """当前的回合数"""
-        self.last_move: Move = Move.null()
-        """上一次的移动"""
         self.start_fen: str = start_fen
-        """上一个不吃子局面FEN字符串"""
+        """起始局面FEN字符串"""
         self.moves: List[Move] = []
+        """记录所有移动"""
+        self.latest_fen: str = start_fen
+        """上一个不吃子局面FEN字符串"""
+        self.latest_moves: List[Move] = []
         """从上一个不吃子局面开始的移动"""
         self.from_fen(start_fen)
         self.history: List[History] = []
@@ -65,6 +65,11 @@ class Board:
 
     def __str__(self) -> str:
         return self.fen()
+
+    @property
+    def last_move(self) -> Move:
+        """上一次的移动"""
+        return self.moves[-1] if self.moves else Move.null()
 
     def from_fen(self, fen: str = ""):
         """从FEN字符串读取当前局面"""
@@ -331,9 +336,9 @@ class Board:
 
     def position(self) -> str:
         """获取 ucci position 指令字符串，用于设置棋盘局面"""
-        res = f"position fen {self.start_fen}"
-        if self.moves:
-            moves = [str(m) for m in self.moves]
+        res = f"position fen {self.latest_fen}"
+        if self.latest_moves:
+            moves = [str(m) for m in self.latest_moves]
             res += f" moves {' '.join(moves)}"
         return res
 
@@ -341,34 +346,32 @@ class Board:
         """保存历史局面"""
         history = History(
             self.fen(),
-            self.start_fen,
-            str(self.last_move),
-            [str(m) for m in self.moves],
+            self.latest_fen,
+            self.latest_moves.copy(),
         )
         self.history.append(history)
 
     def load_history(self, history: History):
         """从历史局面恢复"""
         self.from_fen(history.fen)
-        self.start_fen = history.start_fen
-        self.last_move = Move.from_ucci(history.last_move)
-        self.moves = [Move.from_ucci(m) for m in history.moves]
+        self.latest_fen = history.latest_fen
+        self.latest_moves = history.latest_moves.copy()
 
     def make_move(self, move: Move):
         """进行移动"""
         change = self.get_piece_at(move.to_pos, sameside=False)  # 发生吃子
         self.set_piece(move.to_pos, self.get_piece(move.from_pos))
         self.set_piece(move.from_pos, None)
-        self.last_move = move
         if not self.moveside:
             self.fullmove += 1
         self.moveside = not self.moveside
+        self.moves.append(move)
         if change:
-            self.moves.clear()
+            self.latest_fen = self.fen()
+            self.latest_moves.clear()
             self.halfmove = 0
-            self.start_fen = self.fen()
         else:
-            self.moves.append(move)
+            self.latest_moves.append(move)
             self.halfmove += 1
         self.save_history()
 
@@ -378,6 +381,14 @@ class Board:
         board.set_piece(move.to_pos, board.get_piece(move.from_pos))
         board.set_piece(move.from_pos, None)
         return board
+
+    def is_game_over(self) -> bool:
+        return (
+            self.is_dead()
+            or self.is_king_face_to_face()
+            or self.halfmove >= 60
+            or self.is_checked_dead()
+        )
 
     def push(self, move: Move) -> Optional[MoveResult]:
         """移动并返回结果"""
@@ -398,6 +409,7 @@ class Board:
     def pop(self):
         """撤销上一次移动"""
         self.history.pop()
+        self.moves.pop()
         self.load_history(self.history[-1])
 
     def draw(self, sameside: bool = True) -> BytesIO:
