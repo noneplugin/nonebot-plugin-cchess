@@ -42,7 +42,8 @@ def draw_board(board: "Board", sameside: bool = True) -> BytesIO:
             if not piece:
                 continue
 
-            img = Image.open(img_dir / f"{piece.symbol}.png")
+            img_name = piece.symbol.lower() + ("_red" if piece.color else "_black")
+            img = Image.open(img_dir / f"{img_name}.png")
             bg.paste(img, (x, y), mask=img)
 
     output = BytesIO()
