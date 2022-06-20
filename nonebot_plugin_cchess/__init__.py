@@ -10,7 +10,7 @@ from nonebot.matcher import Matcher
 from nonebot.exception import ParserExit
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule, ArgumentParser
-from nonebot import on_command, on_shell_command, on_message
+from nonebot import on_command, on_shell_command, on_message, require
 from nonebot.params import (
     ShellCommandArgv,
     Command,
@@ -28,6 +28,8 @@ from .board import MoveResult
 from .engine import EngineError
 from .game import Game, Player, AiPlayer
 
+require("nonebot_plugin_datastore")
+
 __plugin_meta__ = PluginMetadata(
     name="象棋",
     description="象棋，支持人机和对战",
@@ -42,7 +44,7 @@ __plugin_meta__ = PluginMetadata(
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.1.6",
+        "version": "0.1.7",
     },
 )
 
