@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple
 from nonebot.typing import T_State
 from nonebot.matcher import Matcher
 from nonebot.exception import ParserExit
+from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule, ArgumentParser
 from nonebot import on_command, on_shell_command, on_message
 from nonebot.params import (
@@ -22,26 +23,28 @@ from nonebot.adapters.onebot.v11 import MessageSegment as MS
 from nonebot.adapters.onebot.v11 import MessageEvent, GroupMessageEvent, Message
 
 from .move import Move
+from .config import Config
 from .board import MoveResult
 from .engine import EngineError
 from .game import Game, Player, AiPlayer
 
-
-__help__plugin_name__ = "cchess"
-__des__ = "象棋，支持人机和对战"
-__cmd__ = """
-@我 + “象棋人机”或“象棋对战”开始一局游戏；
-可使用“lv1~8”指定AI等级，如“象棋人机lv5”，默认为“lv4”；
-发送 中文纵线格式如“炮二平五” 或 起始坐标格式如“h2e2”下棋；
-发送“结束下棋”结束当前棋局；发送“显示棋盘”显示当前棋局
-""".strip()
-__short_cmd__ = "象棋人机、象棋对战"
-__example__ = """
-@小Q 象棋人机lv5
-炮二平五
-结束下棋
-""".strip()
-__usage__ = f"{__des__}\nUsage:\n{__cmd__}\nExample:\n{__example__}"
+__plugin_meta__ = PluginMetadata(
+    name="象棋",
+    description="象棋，支持人机和对战",
+    usage=(
+        "@我 + “象棋人机”或“象棋对战”开始一局游戏；\n"
+        "可使用“lv1~8”指定AI等级，如“象棋人机lv5”，默认为“lv4”；\n"
+        "发送 中文纵线格式如“炮二平五” 或 起始坐标格式如“h2e2”下棋；\n"
+        "发送“结束下棋”结束当前棋局；发送“显示棋盘”显示当前棋局"
+    ),
+    config=Config,
+    extra={
+        "unique_name": "cchess",
+        "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
+        "author": "meetwq <meetwq@gmail.com>",
+        "version": "0.1.6",
+    },
+)
 
 
 parser = ArgumentParser("cchess", description="象棋")
@@ -181,7 +184,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         args = parser.parse_args(argv)
     except ParserExit as e:
         if e.status == 0:
-            await matcher.finish(__usage__)
+            await matcher.finish(__plugin_meta__.usage)
         await matcher.finish()
 
     options = Options(**vars(args))
