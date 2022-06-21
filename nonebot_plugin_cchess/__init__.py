@@ -22,13 +22,13 @@ from nonebot.params import (
 from nonebot.adapters.onebot.v11 import MessageSegment as MS
 from nonebot.adapters.onebot.v11 import MessageEvent, GroupMessageEvent, Message
 
+require("nonebot_plugin_datastore")
+
 from .move import Move
 from .config import Config
 from .board import MoveResult
 from .engine import EngineError
 from .game import Game, Player, AiPlayer
-
-require("nonebot_plugin_datastore")
 
 __plugin_meta__ = PluginMetadata(
     name="象棋",
@@ -44,7 +44,7 @@ __plugin_meta__ = PluginMetadata(
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.1.7",
+        "version": "0.1.8",
     },
 )
 
