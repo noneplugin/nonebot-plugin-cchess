@@ -11,7 +11,7 @@ class GameRecord(SQLModel, table=True):
     start_time: datetime = datetime.now()
     """ 游戏开始时间 """
     update_time: datetime = datetime.now()
-    """ 游戏开始时间 """
+    """ 游戏更新时间 """
     player_red_id: str = ""
     """ 红方id """
     player_red_name: str = ""

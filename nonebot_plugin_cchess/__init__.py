@@ -44,7 +44,7 @@ __plugin_meta__ = PluginMetadata(
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.1.8",
+        "version": "0.1.9",
     },
 )
 
@@ -282,6 +282,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
                 await matcher.finish("上一手棋不是你所下")
             game.pop()
             game.pop()
+        await game.save_record(cid)
         await matcher.finish(f"{player} 进行了悔棋" + MS.image(game.draw()))
 
     if (game.player_next and game.player_next != player) or (

@@ -2,7 +2,6 @@ import uuid
 from sqlmodel import select
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy.exc import SQLAlchemyError
 
 from nonebot import get_driver
 from nonebot_plugin_datastore import create_session
@@ -75,12 +74,9 @@ class Game(Board):
     async def save_record(self, session_id: str):
         statement = select(GameRecord).where(GameRecord.id == self.id)
         async with create_session() as session:
-            try:
-                record: GameRecord = (await session.exec(statement)).one()  # type: ignore
-            except SQLAlchemyError:
-                record = GameRecord()
-            record.id = self.id
-            record.session_id = session_id
+            record: Optional[GameRecord] = await session.scalar(statement)
+            if not record:
+                record = GameRecord(id=self.id, session_id=session_id)
             if self.player_red:
                 record.player_red_id = str(self.player_red.id)
                 record.player_red_name = self.player_red.name
@@ -111,14 +107,14 @@ class Game(Board):
                 await player.engine.open()
                 return player
 
-        statement = select(GameRecord).where(GameRecord.session_id == session_id)
+        statement = select(GameRecord).where(
+            GameRecord.session_id == session_id, GameRecord.is_game_over == False
+        )
         async with create_session() as session:
             records: List[GameRecord] = (await session.exec(statement)).all()  # type: ignore
         if not records:
             return None
         record = sorted(records, key=lambda x: x.update_time)[-1]
-        if record.is_game_over:
-            return None
         game = cls()
         game.id = record.id
         game.player_red = await load_player(
