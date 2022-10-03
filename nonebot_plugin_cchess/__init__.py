@@ -16,7 +16,6 @@ from nonebot.params import (
     Command,
     CommandArg,
     RawCommand,
-    State,
     EventPlainText,
 )
 from nonebot.adapters.onebot.v11 import MessageSegment as MS
@@ -44,7 +43,7 @@ __plugin_meta__ = PluginMetadata(
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.1.9",
+        "version": "0.1.10",
     },
 )
 
@@ -143,7 +142,7 @@ def match_move(msg: str) -> bool:
     return bool(re.fullmatch(r"^\s*\S\S[a-zA-Z平进退上下][\d一二三四五六七八九]\s*$", msg))
 
 
-def get_move_input(state: T_State = State(), msg: str = EventPlainText()) -> bool:
+def get_move_input(state: T_State, msg: str = EventPlainText()) -> bool:
     if match_move(msg):
         state["move"] = msg
         return True
@@ -154,7 +153,7 @@ pos_matcher = on_message(Rule(game_running) & get_move_input, block=True, priori
 
 
 @pos_matcher.handle()
-async def _(matcher: Matcher, event: MessageEvent, state: T_State = State()):
+async def _(matcher: Matcher, event: MessageEvent, state: T_State):
     move: str = state["move"]
     await handle_cchess(matcher, event, [move])
 
