@@ -1,9 +1,9 @@
 import re
 import shlex
 import asyncio
+from typing import Dict, List
 from asyncio import TimerHandle
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 from nonebot.typing import T_State
 from nonebot.matcher import Matcher
@@ -12,11 +12,11 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule, ArgumentParser
 from nonebot import on_command, on_shell_command, on_message, require
 from nonebot.params import (
-    ShellCommandArgv,
-    Command,
+    EventToMe,
     CommandArg,
-    RawCommand,
+    CommandStart,
     EventPlainText,
+    ShellCommandArgv,
 )
 from nonebot.adapters.onebot.v11 import MessageSegment as MS
 from nonebot.adapters.onebot.v11 import MessageEvent, GroupMessageEvent, Message
@@ -43,7 +43,7 @@ __plugin_meta__ = PluginMetadata(
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.1.11",
+        "version": "0.1.12",
     },
 )
 
@@ -112,10 +112,8 @@ def game_running(event: MessageEvent) -> bool:
 
 
 # 命令前缀为空则需要to_me，否则不需要
-def smart_to_me(
-    event: MessageEvent, cmd: Tuple[str, ...] = Command(), raw_cmd: str = RawCommand()
-) -> bool:
-    return not raw_cmd.startswith(cmd[0]) or event.is_tome()
+def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+    return bool(command_start) or to_me
 
 
 def is_group(event: MessageEvent) -> bool:
@@ -158,10 +156,16 @@ async def _(matcher: Matcher, event: MessageEvent, state: T_State):
     await handle_cchess(matcher, event, [move])
 
 
-async def stop_game(matcher: Matcher, cid: str):
+def stop_game(cid: str):
+    game = games.pop(cid, None)
+    if game:
+        game.close_engine()
+
+
+async def stop_game_timeout(matcher: Matcher, cid: str):
     timers.pop(cid, None)
     if games.get(cid, None):
-        games.pop(cid)
+        stop_game(cid)
         await matcher.finish("象棋下棋超时，游戏结束，可发送“重载象棋棋局”继续下棋")
 
 
@@ -171,7 +175,7 @@ def set_timeout(matcher: Matcher, cid: str, timeout: float = 600):
         timer.cancel()
     loop = asyncio.get_running_loop()
     timer = loop.call_later(
-        timeout, lambda: asyncio.ensure_future(stop_game(matcher, cid))
+        timeout, lambda: asyncio.ensure_future(stop_game_timeout(matcher, cid))
     )
     timers[cid] = timer
 
@@ -255,7 +259,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             not game.player_black or game.player_black != player
         ):
             await matcher.finish("只有游戏参与者才能结束游戏")
-        games.pop(cid)
+        stop_game(cid)
         await matcher.finish("游戏已结束，可发送“重载象棋棋局”继续下棋")
 
     if options.show:
@@ -324,21 +328,19 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         msg = f"{player} 下出 {move_str}"
 
     if result == MoveResult.RED_WIN:
-        games.pop(cid)
+        stop_game(cid)
         if game.is_battle:
             msg += f"，恭喜 {game.player_red} 获胜！"
         else:
-            game.close_engine()
             msg += "，恭喜你赢了！" if player == game.player_red else "，很遗憾你输了！"
     elif result == MoveResult.BLACK_WIN:
-        games.pop(cid)
+        stop_game(cid)
         if game.is_battle:
             msg += f"，恭喜 {game.player_black} 获胜！"
         else:
-            game.close_engine()
             msg += "，恭喜你赢了！" if player == game.player_black else "，很遗憾你输了！"
     elif result == MoveResult.DRAW:
-        games.pop(cid)
+        stop_game(cid)
         msg += f"，本局游戏平局"
     else:
         if game.player_next and game.is_battle:
@@ -361,8 +363,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
                 game.pop()
                 await matcher.finish("象棋引擎出错，请结束游戏或稍后再试")
             elif result:
-                games.pop(cid)
-                game.close_engine()
+                stop_game(cid)
                 if result == MoveResult.CHECKED:
                     msg += "，恭喜你赢了！"
                 elif result == MoveResult.RED_WIN:
