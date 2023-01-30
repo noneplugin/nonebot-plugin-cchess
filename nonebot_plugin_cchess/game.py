@@ -76,7 +76,7 @@ class Game(Board):
         async with create_session() as session:
             record: Optional[GameRecord] = await session.scalar(statement)
             if not record:
-                record = GameRecord(id=self.id, session_id=session_id)
+                record = GameRecord(game_id=self.id, session_id=session_id)
             if self.player_red:
                 record.player_red_id = str(self.player_red.id)
                 record.player_red_name = self.player_red.name
