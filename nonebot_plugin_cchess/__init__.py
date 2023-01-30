@@ -1,9 +1,10 @@
 import re
 import shlex
 import asyncio
-from typing import Dict, List
+from io import BytesIO
 from asyncio import TimerHandle
 from dataclasses import dataclass
+from typing import Dict, List, Union, Iterable, NoReturn
 
 from nonebot.typing import T_State
 from nonebot.matcher import Matcher
@@ -18,8 +19,21 @@ from nonebot.params import (
     EventPlainText,
     ShellCommandArgv,
 )
-from nonebot.adapters.onebot.v11 import MessageSegment as MS
-from nonebot.adapters.onebot.v11 import MessageEvent, GroupMessageEvent, Message
+
+from nonebot.adapters.onebot.v11 import Bot as V11Bot
+from nonebot.adapters.onebot.v11 import Message as V11Msg
+from nonebot.adapters.onebot.v11 import MessageSegment as V11MsgSeg
+from nonebot.adapters.onebot.v11 import MessageEvent as V11MEvent
+from nonebot.adapters.onebot.v11 import GroupMessageEvent as V11GMEvent
+from nonebot.adapters.onebot.v11 import PrivateMessageEvent as V11PMEvent
+
+from nonebot.adapters.onebot.v12 import Bot as V12Bot
+from nonebot.adapters.onebot.v12 import Message as V12Msg
+from nonebot.adapters.onebot.v12 import MessageSegment as V12MsgSeg
+from nonebot.adapters.onebot.v12 import MessageEvent as V12MEvent
+from nonebot.adapters.onebot.v12 import GroupMessageEvent as V12GMEvent
+from nonebot.adapters.onebot.v12 import PrivateMessageEvent as V12PMEvent
+from nonebot.adapters.onebot.v12 import ChannelMessageEvent as V12CMEvent
 
 require("nonebot_plugin_datastore")
 
@@ -43,7 +57,7 @@ __plugin_meta__ = PluginMetadata(
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.1.12",
+        "version": "0.2.0",
     },
 )
 
@@ -81,33 +95,51 @@ cchess = on_shell_command("cchess", parser=parser, block=True, priority=13)
 
 @cchess.handle()
 async def _(
-    matcher: Matcher, event: MessageEvent, argv: List[str] = ShellCommandArgv()
+    bot: Union[V11Bot, V12Bot],
+    matcher: Matcher,
+    event: Union[V11MEvent, V12MEvent],
+    argv: List[str] = ShellCommandArgv(),
 ):
-    await handle_cchess(matcher, event, argv)
+    await handle_cchess(bot, matcher, event, argv)
 
 
-def get_cid(event: MessageEvent):
-    return (
-        f"group_{event.group_id}"
-        if isinstance(event, GroupMessageEvent)
-        else f"private_{event.user_id}"
-    )
+def get_cid(bot: Union[V11Bot, V12Bot], event: Union[V11MEvent, V12MEvent]):
+    if isinstance(event, V11MEvent):
+        cid = f"{bot.self_id}_{event.sub_type}_"
+    else:
+        cid = f"{bot.self_id}_{event.detail_type}_"
+
+    if isinstance(event, V11GMEvent) or isinstance(event, V12GMEvent):
+        cid += str(event.group_id)
+    elif isinstance(event, V12CMEvent):
+        cid += f"{event.guild_id}_{event.channel_id}"
+    else:
+        cid += str(event.user_id)
+
+    return cid
 
 
 def shortcut(cmd: str, argv: List[str] = [], **kwargs):
     command = on_command(cmd, **kwargs, block=True, priority=13)
 
     @command.handle()
-    async def _(matcher: Matcher, event: MessageEvent, msg: Message = CommandArg()):
+    async def _(
+        bot: Union[V11Bot, V12Bot],
+        matcher: Matcher,
+        event: Union[V11MEvent, V12MEvent],
+        msg: Union[V11Msg, V12Msg] = CommandArg(),
+    ):
         try:
             args = shlex.split(msg.extract_plain_text().strip())
         except:
             args = []
-        await handle_cchess(matcher, event, argv + args)
+        await handle_cchess(bot, matcher, event, argv + args)
 
 
-def game_running(event: MessageEvent) -> bool:
-    cid = get_cid(event)
+def game_running(
+    bot: Union[V11Bot, V12Bot], event: Union[V11MEvent, V12MEvent]
+) -> bool:
+    cid = get_cid(bot, event)
     return bool(games.get(cid, None))
 
 
@@ -116,11 +148,11 @@ def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) 
     return bool(command_start) or to_me
 
 
-def is_group(event: MessageEvent) -> bool:
-    return isinstance(event, GroupMessageEvent)
+def not_private(event: Union[V11MEvent, V12MEvent]) -> bool:
+    return not (isinstance(event, V11PMEvent) or isinstance(event, V12PMEvent))
 
 
-shortcut("象棋对战", ["--battle"], aliases={"象棋双人"}, rule=Rule(smart_to_me) & is_group)
+shortcut("象棋对战", ["--battle"], aliases={"象棋双人"}, rule=Rule(smart_to_me) & not_private)
 shortcut("象棋人机", aliases={"象棋单人"}, rule=smart_to_me)
 for i in range(1, 9):
     shortcut(
@@ -151,9 +183,14 @@ pos_matcher = on_message(Rule(game_running) & get_move_input, block=True, priori
 
 
 @pos_matcher.handle()
-async def _(matcher: Matcher, event: MessageEvent, state: T_State):
+async def _(
+    bot: Union[V11Bot, V12Bot],
+    matcher: Matcher,
+    event: Union[V11MEvent, V12MEvent],
+    state: T_State,
+):
     move: str = state["move"]
-    await handle_cchess(matcher, event, [move])
+    await handle_cchess(bot, matcher, event, [move])
 
 
 def stop_game(cid: str):
@@ -180,46 +217,91 @@ def set_timeout(matcher: Matcher, cid: str, timeout: float = 600):
     timers[cid] = timer
 
 
-def new_player(event: MessageEvent) -> Player:
-    return Player(event.user_id, event.sender.card or event.sender.nickname or "")
+async def handle_cchess(
+    bot: Union[V11Bot, V12Bot],
+    matcher: Matcher,
+    event: Union[V11MEvent, V12MEvent],
+    argv: List[str],
+):
+    async def new_player(event: Union[V11MEvent, V12MEvent]) -> Player:
+        user_id = event.get_user_id()
+        user_name = ""
+        if isinstance(event, V11MEvent):
+            user_name = event.sender.card or event.sender.nickname or ""
+        else:
+            assert isinstance(bot, V12Bot)
+            resp = await bot.get_user_info(user_id=user_id)
+            user_name = resp["user_displayname"] or resp["user_name"]
+        return Player(user_id, user_name)
 
+    async def send(msgs: Union[str, Iterable[Union[str, BytesIO]]] = "") -> NoReturn:
+        if not msgs:
+            await matcher.finish()
+        if isinstance(msgs, str):
+            await matcher.finish(msgs)
 
-async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
+        if isinstance(bot, V11Bot):
+            message = V11Msg()
+            for msg in msgs:
+                if isinstance(msg, BytesIO):
+                    message.append(V11MsgSeg.image(msg))
+                else:
+                    message.append(msg)
+        else:
+            message = V12Msg()
+            for msg in msgs:
+                if isinstance(msg, BytesIO):
+                    resp = await bot.upload_file(
+                        type="data", name="wordle", data=msg.getvalue()
+                    )
+                    file_id = resp["file_id"]
+                    message.append(V12MsgSeg.image(file_id))
+                else:
+                    message.append(msg)
+        await matcher.finish(message)
+
     try:
         args = parser.parse_args(argv)
     except ParserExit as e:
         if e.status == 0:
-            await matcher.finish(__plugin_meta__.usage)
-        await matcher.finish()
+            await send(__plugin_meta__.usage)
+        await send()
 
     options = Options(**vars(args))
 
-    cid = get_cid(event)
+    cid = get_cid(bot, event)
     if not games.get(cid, None):
         if options.move:
-            await matcher.finish()
+            await send()
 
         if options.stop or options.show or options.repent:
-            await matcher.finish("没有正在进行的游戏")
+            await send("没有正在进行的游戏")
 
         if not options.battle and not 1 <= options.level <= 8:
-            await matcher.finish("等级应在 1~8 之间")
+            await send("等级应在 1~8 之间")
 
         if options.reload:
             try:
                 game = await Game.load_record(cid)
             except EngineError:
-                await matcher.finish("象棋引擎加载失败，请检查设置")
+                await send("象棋引擎加载失败，请检查设置")
             if not game:
-                await matcher.finish("没有找到被中断的游戏")
+                await send("没有找到被中断的游戏")
             games[cid] = game
-            await matcher.finish(
-                f"游戏发起时间：{game.start_time.strftime('%Y-%m-%d %H:%M:%S')}\n红方：{game.player_red}\n黑方：{game.player_black}\n下一手轮到：{game.player_next}"
-                + MS.image(game.draw())
+            await send(
+                (
+                    (
+                        f"游戏发起时间：{game.start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                        f"红方：{game.player_red}\n"
+                        f"黑方：{game.player_black}\n"
+                        f"下一手轮到：{game.player_next}\n"
+                    ),
+                    game.draw(),
+                )
             )
 
         game = Game()
-        player = new_player(event)
+        player = await new_player(event)
         if options.black:
             game.player_black = player
         else:
@@ -238,32 +320,32 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
                     move_chi = move.chinese(game)
                     result = game.push(move)
                     if result:
-                        await matcher.finish("象棋引擎返回不正确，请检查设置")
+                        await send("象棋引擎返回不正确，请检查设置")
                     msg += f"\n{ai_player} 下出 {move_chi}"
                 else:
                     game.player_black = ai_player
             except EngineError:
-                await matcher.finish("象棋引擎加载失败，请检查设置")
+                await send("象棋引擎加载失败，请检查设置")
 
         games[cid] = game
         set_timeout(matcher, cid)
         await game.save_record(cid)
-        await matcher.finish(msg + MS.image(game.draw()))
+        await send((msg, game.draw()))
 
     game = games[cid]
     set_timeout(matcher, cid)
-    player = new_player(event)
+    player = await new_player(event)
 
     if options.stop:
         if (not game.player_red or game.player_red != player) and (
             not game.player_black or game.player_black != player
         ):
-            await matcher.finish("只有游戏参与者才能结束游戏")
+            await send("只有游戏参与者才能结束游戏")
         stop_game(cid)
-        await matcher.finish("游戏已结束，可发送“重载象棋棋局”继续下棋")
+        await send("游戏已结束，可发送“重载象棋棋局”继续下棋")
 
     if options.show:
-        await matcher.finish(MS.image(game.draw()))
+        await send((game.draw(),))
 
     if (
         game.player_red
@@ -271,31 +353,31 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         and game.player_red != player
         and game.player_black != player
     ):
-        await matcher.finish("当前有正在进行的游戏")
+        await send("当前有正在进行的游戏")
 
     if options.repent:
         if len(game.history) <= 1 or not game.player_next:
-            await matcher.finish("对局尚未开始")
+            await send("对局尚未开始")
         if game.is_battle:
             if game.player_last and game.player_last != player:
-                await matcher.finish("上一手棋不是你所下")
+                await send("上一手棋不是你所下")
             game.pop()
         else:
             if len(game.history) <= 2 and game.player_last != player:
-                await matcher.finish("上一手棋不是你所下")
+                await send("上一手棋不是你所下")
             game.pop()
             game.pop()
         await game.save_record(cid)
-        await matcher.finish(f"{player} 进行了悔棋" + MS.image(game.draw()))
+        await send((f"{player} 进行了悔棋", game.draw()))
 
     if (game.player_next and game.player_next != player) or (
         game.player_last and game.player_last == player
     ):
-        await matcher.finish("当前不是你的回合")
+        await send("当前不是你的回合")
 
     move = options.move
     if not match_move(move):
-        await matcher.finish("发送 中文纵线格式如“炮二平五” 或 起始坐标格式如“h2e2” 下棋")
+        await send("发送 中文纵线格式如“炮二平五” 或 起始坐标格式如“h2e2” 下棋")
 
     try:
         move = Move.from_ucci(move)
@@ -303,20 +385,20 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
         try:
             move = Move.from_chinese(game, move)
         except ValueError:
-            await matcher.finish("请发送正确的走法，如 “炮二平五” 或 “h2e2”")
+            await send("请发送正确的走法，如 “炮二平五” 或 “h2e2”")
 
     try:
         move_str = move.chinese(game)
     except ValueError:
-        await matcher.finish("不正确的走法")
+        await send("不正确的走法")
 
     result = game.push(move)
     if result == MoveResult.ILLEAGAL:
-        await matcher.finish("不正确的走法")
+        await send("不正确的走法")
     elif result == MoveResult.CHECKED:
-        await matcher.finish("该走法将导致被将军或白脸将")
+        await send("该走法将导致被将军或白脸将")
 
-    message = Message()
+    msgs: List[Union[str, BytesIO]] = []
 
     if not game.player_last:
         if not game.player_red:
@@ -345,12 +427,13 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
     else:
         if game.player_next and game.is_battle:
             msg += f"，下一手轮到 {game.player_next}"
-    message.append(msg)
+
+    msgs.append(msg)
 
     if game.is_battle:
-        message.append(MS.image(game.draw()))
+        msgs.append(game.draw())
     else:
-        message.append(MS.image(game.draw(False)))
+        msgs.append(game.draw(False))
         if not result:
             ai_player = game.player_next
             assert isinstance(ai_player, AiPlayer)
@@ -361,7 +444,7 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
             msg = f"{ai_player} 下出 {move_chi}"
             if result == MoveResult.ILLEAGAL:
                 game.pop()
-                await matcher.finish("象棋引擎出错，请结束游戏或稍后再试")
+                await send("象棋引擎出错，请结束游戏或稍后再试")
             elif result:
                 stop_game(cid)
                 if result == MoveResult.CHECKED:
@@ -372,8 +455,8 @@ async def handle_cchess(matcher: Matcher, event: MessageEvent, argv: List[str]):
                     msg += "，恭喜你赢了！" if player == game.player_black else "，很遗憾你输了！"
                 elif result == MoveResult.DRAW:
                     msg += f"，本局游戏平局"
-            message.append(msg)
-            message.append(MS.image(game.draw()))
+            msgs.append(msg)
+            msgs.append(game.draw())
 
     await game.save_record(cid)
-    await matcher.finish(message)
+    await send(msgs)

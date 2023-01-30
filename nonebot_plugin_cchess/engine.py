@@ -16,7 +16,7 @@ class UCCIEngine:
 
     async def open(self):
         if not self.engine_path.exists():
-            raise FileNotFoundError("找不到UCCI引擎！")
+            raise EngineError("找不到UCCI引擎！")
         self._process = await asyncio.create_subprocess_exec(
             program=str(self.engine_path),
             stdin=asyncio.subprocess.PIPE,
