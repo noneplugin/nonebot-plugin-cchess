@@ -30,12 +30,16 @@ def upgrade() -> None:
         sa.Column(
             "player_red_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False
         ),
+        sa.Column("player_red_is_ai", sa.Boolean(), nullable=False),
+        sa.Column("player_red_level", sa.Integer(), nullable=False),
         sa.Column(
             "player_black_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False
         ),
         sa.Column(
             "player_black_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False
         ),
+        sa.Column("player_black_is_ai", sa.Boolean(), nullable=False),
+        sa.Column("player_black_level", sa.Integer(), nullable=False),
         sa.Column("start_fen", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("moves", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("is_game_over", sa.Boolean(), nullable=False),

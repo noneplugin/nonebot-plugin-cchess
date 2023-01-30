@@ -16,7 +16,7 @@ cchess_config = Config.parse_obj(get_driver().config.dict())
 
 
 class Player:
-    def __init__(self, id: int, name: str):
+    def __init__(self, id: str, name: str):
         self.id = id
         self.name = name
 
@@ -30,7 +30,7 @@ class Player:
 class AiPlayer(Player):
     def __init__(self, level: int = 4):
         self.level = level
-        self.id = 1000 + level
+        self.id = uuid.uuid4().hex
         self.name = f"AI lv.{level}"
         self.engine = UCCIEngine(cchess_config.cchess_engine_path)
         time_list = [100, 400, 700, 1000, 1500, 2000, 3000, 5000]
@@ -80,9 +80,15 @@ class Game(Board):
             if self.player_red:
                 record.player_red_id = str(self.player_red.id)
                 record.player_red_name = self.player_red.name
+                if isinstance(self.player_red, AiPlayer):
+                    record.player_red_is_ai = True
+                    record.player_red_level = self.player_red.level
             if self.player_black:
                 record.player_black_id = str(self.player_black.id)
                 record.player_black_name = self.player_black.name
+                if isinstance(self.player_black, AiPlayer):
+                    record.player_black_is_ai = True
+                    record.player_black_level = self.player_black.level
             record.start_time = self.start_time
             self.update_time = datetime.now()
             record.update_time = self.update_time
@@ -94,18 +100,21 @@ class Game(Board):
 
     @classmethod
     async def load_record(cls, session_id: str) -> Optional["Game"]:
-        async def load_player(id: str, name: str) -> Optional[Player]:
+        async def load_player(
+            id: str, name: str, is_ai: bool = False, level: int = 0
+        ) -> Optional[Player]:
             if not id:
                 return None
-            if len(id) > 4:
-                return Player(int(id), name)
-            else:
-                level = int(id[-1])
+            if is_ai:
                 if not (1 <= level <= 8):
                     level = 4
                 player = AiPlayer(level)
+                player.id = id
+                player.name = name
                 await player.engine.open()
                 return player
+            else:
+                return Player(id, name)
 
         statement = select(GameRecord).where(
             GameRecord.session_id == session_id, GameRecord.is_game_over == False
@@ -118,10 +127,16 @@ class Game(Board):
         game = cls()
         game.id = record.id
         game.player_red = await load_player(
-            record.player_red_id, record.player_red_name
+            record.player_red_id,
+            record.player_red_name,
+            record.player_red_is_ai,
+            record.player_red_level,
         )
         game.player_black = await load_player(
-            record.player_black_id, record.player_black_name
+            record.player_black_id,
+            record.player_black_name,
+            record.player_black_is_ai,
+            record.player_black_level,
         )
         game.start_time = record.start_time
         game.update_time = record.update_time

@@ -21,10 +21,18 @@ class GameRecord(Model, table=True):
     """ 红方id """
     player_red_name: str = ""
     """ 红方名字 """
+    player_red_is_ai: bool = False
+    """ 红方是否为AI """
+    player_red_level: int = 0
+    """ 红方等级 """
     player_black_id: str = ""
     """ 黑方id """
     player_black_name: str = ""
     """ 黑方名字 """
+    player_black_is_ai: bool = False
+    """ 黑方是否为AI """
+    player_black_level: int = 0
+    """ 黑方等级 """
     start_fen: str = ""
     """ 起始局面FEN字符串 """
     moves: str = ""
