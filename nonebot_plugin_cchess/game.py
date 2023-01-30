@@ -47,7 +47,7 @@ class Game(Board):
         super().__init__()
         self.player_red: Optional[Player] = None
         self.player_black: Optional[Player] = None
-        self.id = uuid.uuid4().hex
+        self.id: str = uuid.uuid4().hex
         self.start_time = datetime.now()
         self.update_time = datetime.now()
 
@@ -72,7 +72,7 @@ class Game(Board):
             self.player_black.engine.close()
 
     async def save_record(self, session_id: str):
-        statement = select(GameRecord).where(GameRecord.id == self.id)
+        statement = select(GameRecord).where(GameRecord.game_id == self.id)
         async with create_session() as session:
             record: Optional[GameRecord] = await session.scalar(statement)
             if not record:
@@ -125,7 +125,7 @@ class Game(Board):
             return None
         record = sorted(records, key=lambda x: x.update_time)[-1]
         game = cls()
-        game.id = record.id
+        game.id = record.game_id
         game.player_red = await load_player(
             record.player_red_id,
             record.player_red_name,
@@ -141,7 +141,7 @@ class Game(Board):
         game.start_time = record.start_time
         game.update_time = record.update_time
         start_fen = record.start_fen
-        moves = [Move.from_ucci(move) for move in record.moves.split(" ")]
+        moves = [Move.from_ucci(move) for move in record.moves.split(" ") if move]
         game.from_fen(start_fen)
         for move in moves:
             game.push(move)
