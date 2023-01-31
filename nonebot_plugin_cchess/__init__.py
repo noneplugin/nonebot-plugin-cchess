@@ -252,7 +252,7 @@ async def handle_cchess(
             for msg in msgs:
                 if isinstance(msg, BytesIO):
                     resp = await bot.upload_file(
-                        type="data", name="wordle", data=msg.getvalue()
+                        type="data", name="cchess", data=msg.getvalue()
                     )
                     file_id = resp["file_id"]
                     message.append(V12MsgSeg.image(file_id))
