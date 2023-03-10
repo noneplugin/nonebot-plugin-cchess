@@ -1,6 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING
+
 from PIL import Image
 
 if TYPE_CHECKING:

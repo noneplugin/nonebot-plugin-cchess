@@ -1,12 +1,12 @@
 import re
+from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from dataclasses import dataclass
-from typing import List, Optional, Iterator
+from typing import Iterator, List, Optional
 
+from .drawer import draw_board
 from .move import Move, Pos
 from .piece import Piece, PieceType
-from .drawer import draw_board
 
 INIT_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1"
 

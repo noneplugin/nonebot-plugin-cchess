@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from .piece import PieceType
 
