@@ -5,10 +5,8 @@ Revises:
 Create Date: 2023-01-30 20:31:06.726918
 
 """
-from alembic import op
 import sqlalchemy as sa
-import sqlmodel
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "2c0cbe227dd9"
@@ -22,26 +20,20 @@ def upgrade() -> None:
     op.create_table(
         "nonebot_plugin_cchess_gamerecord",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("game_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("session_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("game_id", sa.String(), nullable=False),
+        sa.Column("session_id", sa.String(), nullable=False),
         sa.Column("start_time", sa.DateTime(), nullable=False),
         sa.Column("update_time", sa.DateTime(), nullable=False),
-        sa.Column("player_red_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column(
-            "player_red_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
+        sa.Column("player_red_id", sa.String(), nullable=False),
+        sa.Column("player_red_name", sa.String(), nullable=False),
         sa.Column("player_red_is_ai", sa.Boolean(), nullable=False),
         sa.Column("player_red_level", sa.Integer(), nullable=False),
-        sa.Column(
-            "player_black_id", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
-        sa.Column(
-            "player_black_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
+        sa.Column("player_black_id", sa.String(), nullable=False),
+        sa.Column("player_black_name", sa.String(), nullable=False),
         sa.Column("player_black_is_ai", sa.Boolean(), nullable=False),
         sa.Column("player_black_level", sa.Integer(), nullable=False),
-        sa.Column("start_fen", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("moves", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("start_fen", sa.String(), nullable=False),
+        sa.Column("moves", sa.String(), nullable=False),
         sa.Column("is_game_over", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )

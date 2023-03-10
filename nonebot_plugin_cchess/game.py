@@ -1,16 +1,16 @@
 import uuid
-from sqlmodel import select
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from nonebot import get_driver
 from nonebot_plugin_datastore import create_session
+from sqlalchemy import select
 
-from .move import Move
 from .board import Board
 from .config import Config
-from .model import GameRecord
 from .engine import UCCIEngine
+from .model import GameRecord
+from .move import Move
 
 cchess_config = Config.parse_obj(get_driver().config.dict())
 
@@ -120,7 +120,7 @@ class Game(Board):
             GameRecord.session_id == session_id, GameRecord.is_game_over == False
         )
         async with create_session() as session:
-            records: List[GameRecord] = (await session.exec(statement)).all()  # type: ignore
+            records = (await session.scalars(statement)).all()
         if not records:
             return None
         record = sorted(records, key=lambda x: x.update_time)[-1]
