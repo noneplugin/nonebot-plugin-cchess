@@ -26,7 +26,6 @@ def draw_board(board: "Board", sameside: bool = True) -> BytesIO:
 
     for i, line in enumerate(pieces):
         for j, piece in enumerate(line):
-
             if side:
                 x = 200 + 300 * j
                 y = 3150 - 300 * i
