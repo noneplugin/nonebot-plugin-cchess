@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PIL import Image
+from PIL.Image import Resampling
 
 if TYPE_CHECKING:
     from .board import Board
@@ -47,6 +48,6 @@ def draw_board(board: "Board", sameside: bool = True) -> BytesIO:
             bg.paste(img, (x, y), mask=img)
 
     output = BytesIO()
-    bg = bg.convert("RGBA").resize((775, 975), Image.ANTIALIAS)
+    bg = bg.convert("RGBA").resize((775, 975), Resampling.LANCZOS)
     bg.save(output, format="png")
     return output

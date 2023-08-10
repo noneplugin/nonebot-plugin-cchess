@@ -35,7 +35,7 @@ cchess_engine_path=/path/to/your/engine
 
 ### 使用
 
-**以下命令需要加[命令前缀](https://v2.nonebot.dev/docs/api/config#Config-command_start) (默认为`/`)，可自行设置为空**
+**以下命令需要加[命令前缀](https://nonebot.dev/docs/appendices/config#command-start-和-command-separator) (默认为`/`)，可自行设置为空**
 
 @我 + “象棋人机”或“象棋对战”开始一局游戏；
 
