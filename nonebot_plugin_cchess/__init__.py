@@ -17,32 +17,20 @@ from nonebot.params import (
     EventToMe,
     ShellCommandArgv,
 )
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.rule import ArgumentParser, Rule
 from nonebot.typing import T_State
 
 require("nonebot_plugin_saa")
 require("nonebot_plugin_session")
 require("nonebot_plugin_userinfo")
-require("nonebot_plugin_datastore")
+require("nonebot_plugin_orm")
 
 from nonebot_plugin_saa import Image, MessageFactory
-from nonebot_plugin_saa import __plugin_meta__ as saa_plugin_meta
-from nonebot_plugin_session import SessionIdType, SessionLevel
-from nonebot_plugin_session import __plugin_meta__ as session_plugin_meta
-from nonebot_plugin_session import extract_session
-from nonebot_plugin_userinfo import __plugin_meta__ as userinfo_plugin_meta
+from nonebot_plugin_session import SessionIdType, SessionLevel, extract_session
 from nonebot_plugin_userinfo import get_user_info
 
-assert saa_plugin_meta.supported_adapters
-assert session_plugin_meta.supported_adapters
-assert userinfo_plugin_meta.supported_adapters
-supported_adapters = (
-    saa_plugin_meta.supported_adapters
-    & session_plugin_meta.supported_adapters
-    & userinfo_plugin_meta.supported_adapters
-)
-
+from . import migrations
 from .board import MoveResult
 from .config import Config
 from .engine import EngineError
@@ -61,12 +49,15 @@ __plugin_meta__ = PluginMetadata(
     type="application",
     homepage="https://github.com/noneplugin/nonebot-plugin-cchess",
     config=Config,
-    supported_adapters=supported_adapters,
+    supported_adapters=inherit_supported_adapters(
+        "nonebot_plugin_saa", "nonebot_plugin_session", "nonebot_plugin_userinfo"
+    ),
     extra={
         "unique_name": "cchess",
         "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
         "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.3.1",
+        "version": "0.3.2",
+        "orm_version_location": migrations,
     },
 )
 
@@ -220,7 +211,7 @@ async def handle_cchess(
         user_id = event.get_user_id()
         user_name = ""
         if user_info := await get_user_info(bot, event, user_id=user_id):
-            user_name = user_info.user_name
+            user_name = user_info.user_displayname or user_info.user_name
         return Player(user_id, user_name)
 
     async def send(msgs: Union[str, Iterable[Union[str, BytesIO]]] = "") -> NoReturn:
