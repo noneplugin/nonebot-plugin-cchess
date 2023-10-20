@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nonebot_plugin_cchess"
-version = "0.3.1"
+version = "0.3.2"
 description = "Nonebot2 象棋插件"
 authors = ["meetwq <meetwq@gmail.com>"]
 license = "MIT"
@@ -12,14 +12,14 @@ repository = "https://github.com/noneplugin/nonebot-plugin-cchess"
 python = "^3.8"
 nonebot2 = { version = "^2.0.0", extras = ["fastapi"] }
 nonebot-plugin-send-anything-anywhere = "^0.3.0"
-nonebot-plugin-session = "^0.1.0"
-nonebot-plugin-userinfo = "^0.1.0"
-nonebot-plugin-datastore = "^1.0.0"
+nonebot-plugin-session = "^0.2.0"
+nonebot-plugin-userinfo = "^0.1.2"
+nonebot-plugin-orm = "^0.2.3"
 Pillow = ">=9.2.0,<11.0.0"
 
 [tool.poetry.group.dev.dependencies]
 nb-cli = "^1.0.0"
-black = "^22.1.0"
+nonebot-plugin-orm = { version = "^0.2.3", extras = ["default"] }
 
 [tool.nonebot]
 plugins = ["nonebot_plugin_cchess"]
