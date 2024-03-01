@@ -2,17 +2,14 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from nonebot import get_driver
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
 from .board import Board
-from .config import Config
+from .config import cchess_config
 from .engine import UCCIEngine
 from .model import GameRecord
 from .move import Move
-
-cchess_config = Config.parse_obj(get_driver().config.dict())
 
 
 class Player:
@@ -122,7 +119,7 @@ class Game(Board):
             select(GameRecord)
             .where(
                 GameRecord.session_id == session_id,
-                GameRecord.is_game_over == False,
+                GameRecord.is_game_over == False,  # noqa
             )
             .order_by(GameRecord.update_time.desc())
         )

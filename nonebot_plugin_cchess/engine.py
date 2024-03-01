@@ -7,7 +7,8 @@ from .move import Move
 
 
 class EngineError(Exception):
-    pass
+    def __init__(self, message: str):
+        self.message = message
 
 
 class UCCIEngine:
@@ -33,7 +34,7 @@ class UCCIEngine:
 
     def send_line(self, line: str):
         assert self.stdin is not None
-        self.stdin.write(f"{line}\n".encode("utf-8"))
+        self.stdin.write(f"{line}\n".encode())
 
     async def read_line(self, timeout: int = 10) -> str:
         assert self.stdout is not None

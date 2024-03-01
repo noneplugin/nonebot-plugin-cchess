@@ -315,7 +315,7 @@ class Board:
         start_x = min(pos1.x, pos2.x)
         end_x = max(pos1.x, pos2.x)
         return pos1.y == pos2.y and all(
-            [self._board[x][pos1.y] is None for x in range(start_x + 1, end_x)]
+            self._board[x][pos1.y] is None for x in range(start_x + 1, end_x)
         )
 
     def is_checked(self) -> bool:

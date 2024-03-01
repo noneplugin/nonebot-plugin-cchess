@@ -130,7 +130,7 @@ class Move:
 
         piece = board.get_piece_at(self.from_pos)
         if not piece:
-            raise ValueError(f"不合法的移动，起始位置没有棋子")
+            raise ValueError("不合法的移动，起始位置没有棋子")
         piece_type = piece.piece_type
 
         diff_x = self.from_pos.x - self.to_pos.x

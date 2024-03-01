@@ -1,10 +1,11 @@
 """init_db
 
 修订 ID: 3c19beaf3015
-父修订: 
+父修订:
 创建时间: 2023-10-20 14:20:10.594922
 
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
