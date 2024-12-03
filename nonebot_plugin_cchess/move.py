@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 from .piece import PieceType
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 NUM_CHI = ["一", "二", "三", "四", "五", "六", "七", "八", "九"]
 NUM_DIGIT = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-PIECE_DICT: Dict[str, Tuple[str, ...]] = {
+PIECE_DICT: dict[str, tuple[str, ...]] = {
     "k": ("帥", "將", "将", "帅"),
     "a": ("仕", "士"),
     "b": ("相", "象"),
@@ -21,12 +21,18 @@ PIECE_DICT: Dict[str, Tuple[str, ...]] = {
 PIECE_CHI_DICT = {
     name: symbol for symbol, names in PIECE_DICT.items() for name in names
 }
-DIREC_DICT: Dict[int, Tuple[str, ...]] = {0: ("平",), 1: ("进", "上"), -1: ("退", "下")}
-DIREC_CHI_DICT = {name: num for num, names in DIREC_DICT.items() for name in names}
+DIRECTION_DICT: dict[int, tuple[str, ...]] = {
+    0: ("平",),
+    1: ("进", "上"),
+    -1: ("退", "下"),
+}
+DIRECTION_CHI_DICT = {
+    name: num for num, names in DIRECTION_DICT.items() for name in names
+}
 COUNT2_DICT = {1: "前", 2: "后"}
 COUNT2_CHI_DICT = {"前": 1, "后": 2}
 COUNT3_DICT = {1: "前", 2: "中", 3: "后"}
-COUNT345_DICT: Dict[int, Tuple[str, ...]] = {
+COUNT345_DICT: dict[int, tuple[str, ...]] = {
     1: ("前",),
     2: ("二", "中"),
     3: ("三", "后"),
@@ -137,13 +143,13 @@ class Move:
         if board.moveside:
             diff_x = -diff_x
         if diff_x == 0:
-            direc = 0
+            direction = 0
         elif diff_x > 0:
-            direc = 1
+            direction = 1
         else:
-            direc = -1
+            direction = -1
 
-        if direc != 0 and piece_type in (
+        if direction != 0 and piece_type in (
             PieceType.KING,
             PieceType.CANNON,
             PieceType.ROOK,
@@ -186,7 +192,7 @@ class Move:
         else:
             name = COUNT345_DICT[count][0] + col_str
 
-        return name + DIREC_DICT[direc][0] + num_dict[move_num - 1]
+        return name + DIRECTION_DICT[direction][0] + num_dict[move_num - 1]
 
     @classmethod
     def from_chinese(cls, board: "Board", move_str: str) -> "Move":
@@ -211,11 +217,11 @@ class Move:
                 return NUM_DIGIT.index(s) + 1
             raise ValueError(f"记谱字符串中数字不合法：{s}")
 
-        def valid_direc(s: str) -> bool:
-            return s in DIREC_CHI_DICT
+        def valid_direction(s: str) -> bool:
+            return s in DIRECTION_CHI_DICT
 
-        def parse_direc(s: str) -> int:
-            return DIREC_CHI_DICT[s]
+        def parse_direction(s: str) -> int:
+            return DIRECTION_CHI_DICT[s]
 
         def valid_count2(s: str) -> bool:
             return s in COUNT2_CHI_DICT
@@ -245,7 +251,7 @@ class Move:
         if (
             valid_piece(move_str[0])
             and valid_num(move_str[1])
-            and valid_direc(move_str[2])
+            and valid_direction(move_str[2])
             and valid_num(move_str[3])
         ):
             """常规情况：
@@ -260,7 +266,7 @@ class Move:
 
             piece_type = parse_piece(move_str[0])
             col_num = parse_num(move_str[1])
-            direc = parse_direc(move_str[2])
+            direction = parse_direction(move_str[2])
             move_num = parse_num(move_str[3])
 
             from_pos = find_piece(col_num, piece_type)
@@ -268,7 +274,7 @@ class Move:
         elif (
             valid_count2(move_str[0])
             and valid_piece(move_str[1])
-            and valid_direc(move_str[2])
+            and valid_direction(move_str[2])
             and valid_num(move_str[3])
         ):
             """当一方有２个名称相同的棋子位于同一纵线时，需要用“前”或“后”来加以区别：
@@ -278,7 +284,7 @@ class Move:
 
             num = parse_count2(move_str[0])
             piece_type = parse_piece(move_str[1])
-            direc = parse_direc(move_str[2])
+            direction = parse_direction(move_str[2])
             move_num = parse_num(move_str[3])
 
             if piece_type == PieceType.KING:
@@ -293,7 +299,7 @@ class Move:
         elif (
             valid_count345(move_str[0])
             and valid_num(move_str[1])
-            and valid_direc(move_str[2])
+            and valid_direction(move_str[2])
             and valid_num(move_str[3])
         ):
             """当兵卒在同一纵线达到３个，用前中后区分，达到更多用前二三四五区分
@@ -303,7 +309,7 @@ class Move:
 
             num = parse_count345(move_str[0])
             col_num = parse_num(move_str[1])
-            direc = parse_direc(move_str[2])
+            direction = parse_direction(move_str[2])
             move_num = parse_num(move_str[3])
             piece_type = PieceType.PAWN
 
@@ -315,32 +321,32 @@ class Move:
         if not from_pos:
             raise ValueError(f"记谱字符串不合法：{move_str}，找不到对应的棋子")
 
-        if direc == 0:
+        if direction == 0:
             to_x = from_pos.x
             move_num -= 1
             to_y = 8 - move_num if board.moveside else move_num
         else:
             if not board.moveside:
-                direc = -direc
+                direction = -direction
             if piece_type in (
                 PieceType.KING,
                 PieceType.CANNON,
                 PieceType.ROOK,
                 PieceType.PAWN,
             ):
-                to_x = from_pos.x + move_num * direc
+                to_x = from_pos.x + move_num * direction
                 to_y = from_pos.y
             else:
                 move_num -= 1
                 to_y = 8 - move_num if board.moveside else move_num
                 diff_y = abs(from_pos.y - to_y)
                 if piece_type == PieceType.BISHOP:
-                    to_x = from_pos.x + 2 * direc
+                    to_x = from_pos.x + 2 * direction
                 elif piece_type == PieceType.ADVISOR:
-                    to_x = from_pos.x + 1 * direc
+                    to_x = from_pos.x + 1 * direction
                 else:
                     diff_x = 2 if diff_y == 1 else 1
-                    to_x = from_pos.x + diff_x * direc
+                    to_x = from_pos.x + diff_x * direction
         to_pos = Pos(to_x, to_y)
 
         if not (from_pos.valid() and to_pos.valid()):

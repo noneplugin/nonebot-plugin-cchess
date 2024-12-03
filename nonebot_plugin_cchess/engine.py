@@ -1,7 +1,6 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import List
 
 from .move import Move
 
@@ -44,7 +43,7 @@ class UCCIEngine:
             raise EngineError("读取引擎输出超时")
         return line.decode("utf-8").strip()
 
-    async def read_lines(self, endword: str) -> List[str]:
+    async def read_lines(self, endword: str) -> list[str]:
         lines = []
         while True:
             line = await self.read_line()

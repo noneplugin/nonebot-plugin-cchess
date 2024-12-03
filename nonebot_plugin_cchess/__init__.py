@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import TimerHandle
-from typing import Any, Dict, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 from nonebot import on_regex, require
 from nonebot.adapters import Event
@@ -9,7 +9,6 @@ from nonebot.params import Depends, RegexDict
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.rule import to_me
 from nonebot.utils import run_sync
-from typing_extensions import Annotated
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_session")
@@ -60,8 +59,8 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-games: Dict[str, Game] = {}
-timers: Dict[str, TimerHandle] = {}
+games: dict[str, Game] = {}
+timers: dict[str, TimerHandle] = {}
 
 
 UserId = Annotated[str, SessionId(SessionIdType.GROUP)]
@@ -309,7 +308,7 @@ async def _(
     matcher: Matcher,
     user_id: UserId,
     player: CurrentPlayer,
-    matched: Dict[str, Any] = RegexDict(),
+    matched: dict[str, Any] = RegexDict(),
 ):
     game = games[user_id]
     set_timeout(matcher, user_id)
@@ -342,7 +341,7 @@ async def _(
         await matcher.finish("不正确的走法")
 
     result = game.push(move)
-    if result == MoveResult.ILLEAGAL:
+    if result == MoveResult.ILLEGAL:
         await matcher.finish("不正确的走法")
     elif result == MoveResult.CHECKED:
         await matcher.finish("该走法将导致被将军或白脸将")
@@ -388,7 +387,7 @@ async def _(
         result = game.push(move)
         msg += f"\n{ai_player} 下出 {move_str}"
 
-        if result == MoveResult.ILLEAGAL:
+        if result == MoveResult.ILLEGAL:
             game.pop()
             await matcher.finish("象棋引擎出错，请结束游戏或稍后再试")
 

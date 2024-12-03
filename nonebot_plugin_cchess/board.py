@@ -1,8 +1,9 @@
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from typing import Iterator, List, Optional
+from typing import Optional
 
 from .drawer import draw_board
 from .move import Move, Pos
@@ -18,7 +19,7 @@ class MoveResult(Enum):
     """黑胜"""
     DRAW = 2
     """平局"""
-    ILLEAGAL = 3
+    ILLEGAL = 3
     """移动不合法"""
     CHECKED = 4
     """移动会导致被将军"""
@@ -35,13 +36,13 @@ class History:
     """当前局面的FEN字符串"""
     latest_fen: str
     """上一个不吃子局面FEN字符串"""
-    latest_moves: List[Move]
+    latest_moves: list[Move]
     """从上一个不吃子局面开始的移动"""
 
 
 class Board:
     def __init__(self, start_fen: str = INIT_FEN):
-        self._board: List[List[Optional[Piece]]] = [
+        self._board: list[list[Optional[Piece]]] = [
             [None for j in range(9)] for i in range(10)
         ]
         self.moveside: bool = True
@@ -52,14 +53,14 @@ class Board:
         """当前的回合数"""
         self.start_fen: str = start_fen
         """起始局面FEN字符串"""
-        self.moves: List[Move] = []
+        self.moves: list[Move] = []
         """记录所有移动"""
         self.latest_fen: str = start_fen
         """上一个不吃子局面FEN字符串"""
-        self.latest_moves: List[Move] = []
+        self.latest_moves: list[Move] = []
         """从上一个不吃子局面开始的移动"""
         self.from_fen(start_fen)
-        self.history: List[History] = []
+        self.history: list[History] = []
         """历史记录"""
         self.save_history()
 
@@ -393,7 +394,7 @@ class Board:
     def push(self, move: Move) -> Optional[MoveResult]:
         """移动并返回结果"""
         if not self.is_legal_move(move):
-            return MoveResult.ILLEAGAL
+            return MoveResult.ILLEGAL
         if self.is_checked_move(move):
             return MoveResult.CHECKED
         self.make_move(move)

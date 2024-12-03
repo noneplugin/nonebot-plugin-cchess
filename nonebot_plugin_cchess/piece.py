@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Dict, Tuple
 
 
 class PieceType(Enum):
@@ -19,14 +18,14 @@ class PieceType(Enum):
     """兵"""
 
 
-piece_data: Dict[str, Tuple[Tuple[str, str], Tuple[str, str]]] = {
-    "k": (("帅", "将"), ("\U0001FA00", "\U0001FA07")),
-    "a": (("仕", "士"), ("\U0001FA01", "\U0001FA08")),
-    "b": (("相", "象"), ("\U0001FA02", "\U0001FA09")),
-    "n": (("马", "马"), ("\U0001FA03", "\U0001FA0A")),
-    "r": (("车", "车"), ("\U0001FA04", "\U0001FA0B")),
-    "c": (("炮", "炮"), ("\U0001FA05", "\U0001FA0C")),
-    "p": (("兵", "卒"), ("\U0001FA06", "\U0001FA0D")),
+piece_data: dict[str, tuple[tuple[str, str], tuple[str, str]]] = {
+    "k": (("帅", "将"), ("\U0001fa00", "\U0001fa07")),
+    "a": (("仕", "士"), ("\U0001fa01", "\U0001fa08")),
+    "b": (("相", "象"), ("\U0001fa02", "\U0001fa09")),
+    "n": (("马", "马"), ("\U0001fa03", "\U0001fa0a")),
+    "r": (("车", "车"), ("\U0001fa04", "\U0001fa0b")),
+    "c": (("炮", "炮"), ("\U0001fa05", "\U0001fa0c")),
+    "p": (("兵", "卒"), ("\U0001fa06", "\U0001fa0d")),
 }
 
 
