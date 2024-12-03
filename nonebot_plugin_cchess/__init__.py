@@ -3,7 +3,6 @@ from asyncio import TimerHandle
 from typing import Annotated, Any, Optional, Union
 
 from nonebot import on_regex, require
-from nonebot.adapters import Event
 from nonebot.matcher import Matcher
 from nonebot.params import Depends, RegexDict
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
@@ -12,7 +11,7 @@ from nonebot.utils import run_sync
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_session")
-require("nonebot_plugin_userinfo")
+require("nonebot_plugin_uninfo")
 require("nonebot_plugin_orm")
 
 from nonebot_plugin_alconna import (
@@ -27,10 +26,8 @@ from nonebot_plugin_alconna import (
     on_alconna,
     store_true,
 )
-from nonebot_plugin_session import EventSession, SessionId, SessionIdType, SessionLevel
-from nonebot_plugin_userinfo import EventUserInfo, UserInfo
+from nonebot_plugin_uninfo import Uninfo
 
-from . import migrations
 from .board import MoveResult
 from .config import Config
 from .engine import EngineError
@@ -50,12 +47,8 @@ __plugin_meta__ = PluginMetadata(
     homepage="https://github.com/noneplugin/nonebot-plugin-cchess",
     config=Config,
     supported_adapters=inherit_supported_adapters(
-        "nonebot_plugin_alconna", "nonebot_plugin_session", "nonebot_plugin_userinfo"
+        "nonebot_plugin_alconna", "nonebot_plugin_uninfo"
     ),
-    extra={
-        "example": "@小Q 象棋人机lv5\n炮二平五\n结束下棋",
-        "orm_version_location": migrations,
-    },
 )
 
 
@@ -63,7 +56,11 @@ games: dict[str, Game] = {}
 timers: dict[str, TimerHandle] = {}
 
 
-UserId = Annotated[str, SessionId(SessionIdType.GROUP)]
+def get_user_id(uninfo: Uninfo) -> str:
+    return f"{uninfo.scope}_{uninfo.self_id}_{uninfo.scene_path}"
+
+
+UserId = Annotated[str, Depends(get_user_id)]
 
 
 def game_is_running(user_id: UserId) -> bool:
@@ -171,13 +168,14 @@ def set_timeout(matcher: Matcher, user_id: str, timeout: float = 600):
     timers[user_id] = timer
 
 
-def current_player(event: Event, user_info: UserInfo = EventUserInfo()) -> Player:
-    if user_info:
-        user_id = user_info.user_id
-        user_name = user_info.user_displayname or user_info.user_name
-    else:
-        user_id = event.get_user_id()
-        user_name = ""
+def current_player(uninfo: Uninfo) -> Player:
+    user_id = uninfo.user.id
+    user_name = (
+        (uninfo.member.nick if uninfo.member else None)
+        or uninfo.user.nick
+        or uninfo.user.name
+        or ""
+    )
     return Player(user_id, user_name)
 
 
@@ -188,7 +186,7 @@ CurrentPlayer = Annotated[Player, Depends(current_player)]
 async def _(
     matcher: Matcher,
     user_id: UserId,
-    session: EventSession,
+    uninfo: Uninfo,
     player: CurrentPlayer,
     battle: Query[bool] = AlconnaQuery("battle.value", False),
     black: Query[bool] = AlconnaQuery("black.value", False),
@@ -197,7 +195,7 @@ async def _(
     if not battle.result and not 1 <= level.result <= 8:
         await matcher.finish("等级应在 1~8 之间")
 
-    if battle.result and session.level == SessionLevel.LEVEL1:
+    if battle.result and uninfo.scene.is_private:
         await matcher.finish("私聊不支持对战模式")
 
     game = Game()
