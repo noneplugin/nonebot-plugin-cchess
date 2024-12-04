@@ -10,7 +10,6 @@ from nonebot.rule import to_me
 from nonebot.utils import run_sync
 
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_session")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_orm")
 
